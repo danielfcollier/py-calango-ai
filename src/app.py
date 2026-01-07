@@ -1,13 +1,25 @@
 # src/app.py
 import streamlit as st
+from mystique.database import ConfigManager
+from mystique.themes import apply_theme
 
+# 1. Page Config MUST be the first Streamlit command
 st.set_page_config(
     page_title="Mystique AI",
     page_icon="🧬",
     layout="wide"
 )
 
-# --- FIX: Paths are relative to this file (app.py) ---
+# 2. GLOBAL THEME INJECTION
+# This ensures the theme persists across all pages (Chat, Dashboard, Settings)
+try:
+    db = ConfigManager()
+    saved_theme = db.load_theme_setting()
+    apply_theme(saved_theme)
+except Exception as e:
+    print(f"Theme load error: {e}")
+
+# 3. Navigation Setup
 home_page = st.Page("ui/home.py", title="Chat", icon="💬")
 dashboard_page = st.Page("ui/dashboard.py", title="Control Board", icon="📊")
 settings_page = st.Page("ui/settings.py", title="Settings", icon="⚙️")
