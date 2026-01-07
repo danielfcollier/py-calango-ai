@@ -2,6 +2,7 @@ from tinydb import TinyDB, Query
 import uuid
 from datetime import datetime
 import os
+import yaml
 
 DB_PATH = "mystique.json"
 
@@ -117,3 +118,39 @@ class InteractionManager:
         }
         self.history_table.insert(record)
         return record
+
+class PersonaManager:
+    """Manages System Prompts (Personas)"""
+    def __init__(self):
+        self.db = TinyDB(DB_PATH)
+        self.personas_table = self.db.table('personas')
+        
+        # Seed default personas if empty
+        if not self.personas_table.all():
+            self._seed_defaults()
+
+    def _seed_defaults(self):
+        defaults = [
+            {"name": "Mystique (Default)", "prompt": "You are a helpful AI assistant."},
+            {"name": "Python Expert", "prompt": "You are a Senior Python Engineer. Be concise, use type hints, and focus on clean, performant code."},
+            {"name": "Creative Writer", "prompt": "You are a visionary writer. Use evocative language, vivid imagery, and varied sentence structures."}
+        ]
+        for p in defaults:
+            self.create_persona(p['name'], p['prompt'])
+
+    def create_persona(self, name, prompt):
+        """Creates or Updates a persona"""
+        Persona = Query()
+        self.personas_table.upsert({'name': name, 'prompt': prompt}, Persona.name == name)
+
+    def delete_persona(self, name):
+        Persona = Query()
+        self.personas_table.remove(Persona.name == name)
+
+    def get_all_personas(self):
+        return self.personas_table.all()
+    
+    def get_prompt(self, name):
+        Persona = Query()
+        res = self.personas_table.get(Persona.name == name)
+        return res['prompt'] if res else "You are a helpful assistant."
