@@ -1,5 +1,5 @@
 def main():
-    print("Hello from py-mystique-ai!")
+    print("Hello from py-calango-ai!")
 
 
 if __name__ == "__main__":

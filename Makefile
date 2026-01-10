@@ -38,7 +38,7 @@ clean: ## Remove cache files and artifacts
 
 clean-all: clean ## Deep clean (removes venv and database)
 	rm -rf .venv
-	rm -f mystique.json
+	rm -f calango.json
 
 # --- Help ---
 help: ## Show this help message

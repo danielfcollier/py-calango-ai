@@ -1,5 +1,5 @@
 [project]
-name = "mystique-ai"
+name = "calango-ai"
 version = "0.1.0"
 description = "A shapeshifting LLM wrapper with multi-provider support."
 readme = "README.md"
@@ -20,7 +20,7 @@ build-backend = "hatchling.build"
 
 # --- FIX 1: Explicitly map the package ---
 [tool.hatch.build.targets.wheel]
-packages = ["src/mystique"]
+packages = ["src/calango"]
 
 # --- FIX 2: Use the new standard for dev dependencies ---
 [dependency-groups]
@@ -28,6 +28,7 @@ dev = [
     "ruff>=0.3.0",
     "mypy>=1.9.0",
     "pytest>=8.0.0",
+    "pyinstaller>=6.17.0",
 ]
 
 [tool.ruff]

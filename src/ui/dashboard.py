@@ -1,52 +1,44 @@
 import pandas as pd
 import plotly.express as px
-from mystique.database import InteractionManager
-
+from calango.database import InteractionManager
 import streamlit as st
 
-# Initialize Database Connection
 db = InteractionManager()
 
-st.title("🧠 Cerebro: Control Board")
+st.title("🐊 A Cuca (The Brain)")
+st.caption("She sees everything. Track your costs, tokens, and digital memories here.")
 
-# 1. Fetch Data
 history_data = db.history_table.all()
 
 if not history_data:
-    st.info("No mission data found. Engage Mystique to generate logs.")
+    st.warning("🐊 The Cuca is hungry! Start chatting to feed her some data.")
     st.stop()
 
-# 2. Preprocess Data
 df = pd.DataFrame(history_data)
-
-# Flatten the 'usage' dictionary into separate columns
 usage_df = pd.json_normalize(df["usage"])
 df = pd.concat([df.drop(["usage"], axis=1), usage_df], axis=1)
-
-# Convert timestamp to datetime objects
 df["timestamp"] = pd.to_datetime(df["timestamp"])
 
-# 3. KPI Metrics (The "Heads Up Display")
 col1, col2, col3, col4 = st.columns(4)
 
 total_cost = df["cost_usd"].sum()
 total_tokens = df["total_tokens"].sum()
 total_interactions = len(df)
-# Calculate favorite model safely
 fav_model = df["model"].mode()[0] if not df["model"].empty else "N/A"
 
-col1.metric("Total Spend", f"${total_cost:.5f}")
-col2.metric("Total Tokens", f"{total_tokens:,}")
-col3.metric("Interactions", total_interactions)
-col4.metric("Favorite Model", fav_model)
+col1.metric("Total Treasure ($)", f"${total_cost:.5f}")
+col2.metric("Tokens Consumed", f"{total_tokens:,}")
+col3.metric("Memories Stored", total_interactions)
+col4.metric("Favorite Spirit", fav_model)
 
 st.divider()
 
-# 4. Interactive Visualizations
 c1, c2 = st.columns(2)
 
+THEME_PALETTE = ["#8A2BE2", "#22c55e", "#FACC15", "#DC2626", "#0284C7"]
+
 with c1:
-    st.subheader("💰 Spend by Model")
+    st.subheader("💰 Tribute by Model (Cost)")
     if total_cost > 0:
         cost_by_model = df.groupby("model")["cost_usd"].sum().reset_index()
         fig_pie = px.pie(
@@ -54,15 +46,20 @@ with c1:
             values="cost_usd",
             names="model",
             hole=0.4,
-            color_discrete_sequence=px.colors.sequential.Magma,
+            color_discrete_sequence=THEME_PALETTE,
+        )
+        fig_pie.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color="#E0E0E0",
+            showlegend=True,
         )
         st.plotly_chart(fig_pie, use_container_width=True)
     else:
-        st.caption("No cost data available to display.")
+        st.caption("No tributes paid yet (Cost is $0).")
 
 with c2:
-    st.subheader("📈 Usage Over Time")
-    # Group by Date (Day)
+    st.subheader("📈 Activity Flow")
     daily_usage = (
         df.set_index("timestamp").resample("D")["total_tokens"].sum().reset_index()
     )
@@ -72,25 +69,28 @@ with c2:
             daily_usage,
             x="timestamp",
             y="total_tokens",
-            labels={"total_tokens": "Tokens Consumed", "timestamp": "Date"},
-            color_discrete_sequence=["#4B0082"],  # Indigo
+            labels={"total_tokens": "Tokens", "timestamp": "Date"},
+            color_discrete_sequence=["#22c55e"],
+        )
+        fig_line.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color="#E0E0E0",
         )
         st.plotly_chart(fig_line, use_container_width=True)
     else:
-        st.caption("Not enough data for time series.")
+        st.caption("Not enough time has passed.")
 
-# 5. Detailed Mission Logs
-st.subheader("🗂️ Mission Logs")
+st.subheader("🗂️ The Cauldron (Logs)")
 
-# Filter options
 filter_col1, filter_col2 = st.columns(2)
 with filter_col1:
     selected_provider_filter = st.multiselect(
-        "Filter by Provider", options=df["provider"].unique()
+        "Filter by Realm (Provider)", options=df["provider"].unique()
     )
 with filter_col2:
     selected_model_filter = st.multiselect(
-        "Filter by Model", options=df["model"].unique()
+        "Filter by Spirit (Model)", options=df["model"].unique()
     )
 
 filtered_df = df.copy()
@@ -99,18 +99,19 @@ if selected_provider_filter:
 if selected_model_filter:
     filtered_df = filtered_df[filtered_df["model"].isin(selected_model_filter)]
 
-# Display table
+filtered_df = filtered_df.sort_values(by="timestamp", ascending=False)
+
 st.dataframe(
     filtered_df[
         ["timestamp", "provider", "model", "total_tokens", "cost_usd", "messages"]
     ],
     use_container_width=True,
     column_config={
-        "timestamp": st.column_config.DatetimeColumn(
-            "Time", format="D MMM YYYY, h:mm a"
-        ),
-        "cost_usd": st.column_config.NumberColumn("Cost ($)", format="$%.5f"),
-        "messages": "Context",  # Rename column for display
+        "timestamp": st.column_config.DatetimeColumn("Time", format="D MMM, HH:mm"),
+        "cost_usd": st.column_config.NumberColumn("Cost", format="$%.5f"),
+        "total_tokens": st.column_config.NumberColumn("Tokens"),
+        "messages": "Conversation Context",
     },
     height=400,
+    hide_index=True,
 )

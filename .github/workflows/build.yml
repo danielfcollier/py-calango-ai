@@ -1,0 +1,52 @@
+name: Build Standalone Executables
+
+on:
+  push:
+    tags:
+      - 'v*' # Only build when you push a version tag (e.g., v1.0.0)
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: CalangoAI_Linux
+            executable_path: dist/CalangoAI
+          - os: windows-latest
+            artifact_name: CalangoAI_Windows.exe
+            executable_path: dist/CalangoAI.exe
+          - os: macos-latest
+            artifact_name: CalangoAI_MacOS
+            executable_path: dist/CalangoAI
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: ⚡ Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: 📦 Install Dependencies
+        run: |
+          uv sync --group dev
+
+      - name: 🔨 Build with PyInstaller
+        # This uses the .spec file we created earlier
+        run: |
+          uv run pyinstaller calango.spec --clean
+
+      - name: 📤 Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.executable_path }}
+          if-no-files-found: error
