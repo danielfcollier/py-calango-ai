@@ -1,16 +1,14 @@
-import os
+# src/calango/database.py
+
 import uuid
 from datetime import datetime
 from pathlib import Path
 
-import yaml
 from tinydb import Query, TinyDB
 
 APP_NAME = ".calango"
 APP_DIR = Path.home() / APP_NAME
-
 APP_DIR.mkdir(parents=True, exist_ok=True)
-
 DB_PATH = Path(APP_DIR, "calango.json")
 
 
@@ -30,52 +28,26 @@ class ConfigManager:
         self.config_table.upsert({"name": name, "api_key": api_key, "models": models}, Provider.name == name)
 
     def load_theme_setting(self):
-        """Get current theme preference"""
         Setting = Query()
         result = self.settings_table.get(Setting.section == "appearance")
         return result.get("theme", "default") if result else "default"
 
     def save_theme_setting(self, theme_name: str):
         Setting = Query()
-        self.settings_table.upsert(
-            {"section": "appearance", "theme": theme_name},
-            Setting.section == "appearance",
-        )
-
-    def import_yaml(self, yaml_path: str):
-        if not os.path.exists(yaml_path):
-            return False
-
-        with open(yaml_path) as f:
-            data = yaml.safe_load(f)
-
-        self.config_table.truncate()
-        for name, details in data.get("providers", {}).items():
-            self.upsert_provider(name, details.get("api_key"), details.get("models"))
-        return True
+        self.settings_table.upsert({"section": "appearance", "theme": theme_name}, Setting.section == "appearance")
 
 
 class PersonaManager:
-    """Manages System Prompts (Personas)"""
-
     def __init__(self):
         self.db = TinyDB(DB_PATH)
         self.personas_table = self.db.table("personas")
-
         if not self.personas_table.all():
             self._seed_defaults()
 
     def _seed_defaults(self):
         defaults = [
             {"name": "Calango (Default)", "prompt": "You are a helpful AI assistant."},
-            {
-                "name": "Python Expert",
-                "prompt": "You are a Senior Python Engineer. Be concise, use type hints, and focus on clean, performant code.",  # noqa
-            },
-            {
-                "name": "Creative Writer",
-                "prompt": "You are a visionary writer. Use evocative language, vivid imagery, and varied sentence structures.",  # noqa
-            },
+            {"name": "Python Expert", "prompt": "You are a Senior Python Engineer..."},
         ]
         for p in defaults:
             self.create_persona(p["name"], p["prompt"])
@@ -118,7 +90,40 @@ class SessionManager:
 
     def get_messages(self, session_id):
         History = Query()
-        return self.history_table.search(History.session_id == session_id)
+        interactions = self.history_table.search(History.session_id == session_id)
+        interactions.sort(key=lambda x: x.get("timestamp", ""))
+
+        formatted_messages = []
+        for ix in interactions:
+            timestamp = ix.get("timestamp", "")
+            model_info = ix.get("model", "Unknown")
+            provider_info = ix.get("provider", "Unknown")  # Metadata: Retrieve provider
+            persona_info = ix.get("persona") or "Default"
+
+            if ix.get("messages"):
+                user_msg = ix["messages"][-1]
+                formatted_messages.append(
+                    {
+                        "role": "user",
+                        "content": user_msg["content"],
+                        "time": timestamp,
+                        "model": model_info,
+                        "provider": provider_info,  # Added provider
+                        "persona": persona_info,
+                    }
+                )
+
+            formatted_messages.append(
+                {
+                    "role": "assistant",
+                    "content": ix.get("reply", ""),
+                    "time": timestamp,
+                    "model": model_info,
+                    "provider": provider_info,  # Added provider
+                    "persona": persona_info,
+                }
+            )
+        return formatted_messages
 
     def delete_session(self, session_id):
         Session = Query()
@@ -132,33 +137,25 @@ class InteractionManager:
         self.db = TinyDB(DB_PATH)
         self.history_table = self.db.table("history")
 
-    def log_interaction(self, provider, model, messages, response, session_id, cost=0.0):
-        # Handle streaming "MockResponse" objects and real objects
+    def log_interaction(self, provider, model, messages, response, session_id, persona, cost=0.0):
         try:
             input_tokens = response.usage.prompt_tokens
             output_tokens = response.usage.completion_tokens
-            total_tokens = response.usage.total_tokens
             reply_content = response.choices[0].message.content
         except Exception:
-            # Fallback if structure is slightly different
-            input_tokens = 0
-            output_tokens = 0
-            total_tokens = 0
+            input_tokens = output_tokens = 0
             reply_content = ""
 
         record = {
             "id": str(uuid.uuid4()),
             "session_id": session_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # Date: yyyy-mm-dd HH:mm:ss
             "provider": provider,
             "model": model,
+            "persona": persona,
             "messages": messages,
             "reply": reply_content,
-            "usage": {
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": total_tokens,
-            },
+            "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
             "cost_usd": cost,
         }
         self.history_table.insert(record)

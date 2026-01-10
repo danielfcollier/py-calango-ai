@@ -13,3 +13,4 @@ wheels/
 .env
 *.spec
 .coverage
+temp_config.yaml

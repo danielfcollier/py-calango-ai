@@ -4,142 +4,131 @@ import streamlit as st
 from calango.core import CalangoEngine
 from calango.database import PersonaManager, SessionManager
 
-# Initialize Logic
+# Inicialização da Lógica
 engine = CalangoEngine()
 session_mgr = SessionManager()
 persona_mgr = PersonaManager()
 
 st.title("Calango AI 🦎")
 
-# --- STATE MANAGEMENT ---
+# --- GERENCIAMENTO DE ESTADO ---
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- SIDEBAR (Config & Memory) ---
-with st.sidebar:
-    st.header("Configuration")
+# --- BLOCO DE PRÉ-PROCESSAMENTO (CORREÇÃO DE ESTADO) ---
+# Resolve o erro de StreamlitAPIException ao carregar sessões antigas
+if "pending_session_id" in st.session_state:
+    session_id = st.session_state.pop("pending_session_id")
+    st.session_state.session_id = session_id
+    msgs = session_mgr.get_messages(session_id)
+    st.session_state.messages = msgs
 
-    # 1. Provider Selection
+    if msgs:
+        # Busca a última configuração usada no histórico desta conversa
+        last_meta = next((m for m in reversed(msgs) if "model" in m), None)
+        if last_meta:
+            # Atualiza Provedor, Modelo e Persona ANTES de renderizar os widgets
+            st.session_state.provider_select = last_meta.get("provider")
+            st.session_state.model_select = last_meta.get("model")
+            st.session_state.persona_select = last_meta.get("persona")
+
+# --- SIDEBAR (Configuração e Memória) ---
+with st.sidebar:
+    st.header("Configuração")
     providers = engine.get_configured_providers()
     if not providers:
-        st.warning("No providers found. Go to Settings.")
+        st.warning("Nenhum provedor configurado.")
         st.stop()
 
-    selected_provider = st.selectbox("Provider", providers)
-    models = engine.get_models_for_provider(selected_provider)
-    selected_model = st.selectbox("Model", models)
+    # Selectbox Provedor
+    selected_provider = st.selectbox("Provedor", providers, key="provider_select")
+
+    available_models = engine.get_models_for_provider(selected_provider)
+    # Selectbox Modelo
+    selected_model = st.selectbox("Modelo", available_models, key="model_select")
 
     st.divider()
-
-    # 2. Persona Selection (The Calango Logic)
     st.subheader("🎭 Persona")
     all_personas = [p["name"] for p in persona_mgr.get_all_personas()]
 
-    # Default to index 0 if list is not empty
-    if all_personas:
-        selected_persona_name = st.selectbox("Current Identity", all_personas, index=0)
-        # Fetch the actual hidden prompt text
-        system_prompt_text = persona_mgr.get_prompt(selected_persona_name)
-    else:
-        st.warning("No personas found. Create one in Settings.")
-        system_prompt_text = "You are a helpful assistant."
+    # Selectbox Persona com a KEY para sincronização automática
+    selected_persona_name = st.selectbox(
+        "Identidade Atual", all_personas if all_personas else ["Default"], key="persona_select"
+    )
+    system_prompt_text = persona_mgr.get_prompt(selected_persona_name)
 
     st.divider()
-
-    # 3. Session Management
-    st.header("Memory Banks")
-
-    if st.button("➕ New Chat", use_container_width=True):
+    st.header("Bancos de Memória")
+    if st.button("➕ Nova Conversa", use_container_width=True):
         st.session_state.session_id = None
         st.session_state.messages = []
+        # Resetar para valores padrão se desejar, ou manter os atuais
         st.rerun()
 
-    # List Past Sessions
+    # Lista de sessões anteriores
     previous_sessions = session_mgr.get_all_sessions()
 
-    st.caption("Recent Conversations")
     for s in previous_sessions:
-        col1, col2 = st.columns([0.8, 0.2])
-        with col1:
-            # Load Session
-            if st.button(f"💬 {s.get('title', 'Untitled')}", key=f"btn_{s['id']}"):
-                st.session_state.session_id = s["id"]
+        col_title, col_del = st.columns([4, 1], vertical_alignment="center")
 
-                # Reconstruct chat history from DB logs
-                db_messages = session_mgr.get_messages(s["id"])
-                reconstructed = []
-                for turn in db_messages:
-                    # Extract user prompt from the message history list
-                    user_content = turn["messages"][-1]["content"]
-                    reconstructed.append({"role": "user", "content": user_content})
-                    reconstructed.append({"role": "assistant", "content": turn["reply"]})
+        # Ao clicar, apenas sinalizamos a intenção e damos rerun para o bloco de topo processar
+        if col_title.button(f"💬 {s['title']}", key=f"sel_{s['id']}", use_container_width=True):
+            st.session_state.pending_session_id = s["id"]
+            st.rerun()
 
-                st.session_state.messages = reconstructed
-                st.rerun()
-        with col2:
-            # Delete Session
-            if st.button("🗑️", key=f"del_{s['id']}"):
-                session_mgr.delete_session(s["id"])
-                if st.session_state.session_id == s["id"]:
-                    st.session_state.session_id = None
-                    st.session_state.messages = []
-                st.rerun()
+        # Botão de Deletar
+        if col_del.button("🗑️", key=f"del_{s['id']}", type="primary", help="Deletar Chat"):
+            session_mgr.delete_session(s["id"])
+            if st.session_state.session_id == s["id"]:
+                st.session_state.session_id = None
+                st.session_state.messages = []
+            st.rerun()
 
-# --- LOGIC: SYSTEM PROMPT INJECTION ---
-# This ensures the LLM knows who it is supposed to be.
-# We treat the first message in the list as the System Prompt.
+# Renomear Chat Ativo
+if st.session_state.session_id:
+    curr = next((s for s in previous_sessions if s["id"] == st.session_state.session_id), None)
+    if curr:
+        new_name = st.text_input("📝 Renomear Chat", value=curr["title"], key=f"rn_{st.session_state.session_id}")
+        if new_name != curr["title"]:
+            session_mgr.update_session_title(st.session_state.session_id, new_name)
+            st.rerun()
 
-if not st.session_state.messages:
-    # Case A: Brand new chat -> Add the prompt
-    st.session_state.messages.append({"role": "system", "content": system_prompt_text})
-else:
-    # Case B: Existing chat
-    if st.session_state.messages[0]["role"] == "system":
-        # Update the existing system prompt (Shapeshift on the fly!)
-        st.session_state.messages[0]["content"] = system_prompt_text
-    else:
-        # Legacy chat without system prompt -> Insert it at the top
-        st.session_state.messages.insert(0, {"role": "system", "content": system_prompt_text})
+# --- INTERFACE DE CHAT ---
 
-
-# --- MAIN CHAT INTERFACE ---
-
-# Display Chat History (Hide the system prompt from the UI)
 for msg in st.session_state.messages:
-    if msg.get("role") != "system":
-        st.chat_message(msg["role"]).write(msg["content"])
+    if isinstance(msg, dict) and msg.get("role") != "system":
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+            if "time" in msg:
+                st.caption(f"🕒 {msg['time']} | 🤖 {msg.get('model')} | 🎭 {msg.get('persona')}")
 
-# Chat Input
-if prompt := st.chat_input("Ask Calango..."):
-    # 1. Handle New Session Creation
+# Input de Usuário
+if prompt := st.chat_input("Pergunte ao Calango..."):
     is_new = False
     if st.session_state.session_id is None:
-        st.session_state.session_id = session_mgr.create_session(title="New Conversation")
+        st.session_state.session_id = session_mgr.create_session(title="Nova Conversa")
         is_new = True
 
-    # 2. Append User Message
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
-    # 3. Call Engine with Streaming
     with st.chat_message("assistant"):
-        # We pass the full message history (which now includes the System Prompt at index 0)
-        stream_generator = engine.run_chat(
+        chat_history = [m for m in st.session_state.messages if m.get("role") != "system"]
+        chat_history.insert(0, {"role": "system", "content": system_prompt_text})
+
+        stream = engine.run_chat(
             provider_name=selected_provider,
             model_name=selected_model,
-            messages=st.session_state.messages,
+            messages=chat_history,
             session_id=st.session_state.session_id,
+            persona_name=selected_persona_name,
             is_new_session=is_new,
         )
+        response_content = st.write_stream(stream)
 
-        # Stream the response to the UI
-        response_content = st.write_stream(stream_generator)
-
-    # 4. Save Assistant Response to State
     st.session_state.messages.append({"role": "assistant", "content": response_content})
 
-    # 5. Refresh sidebar (if it was a new session, to update the title)
     if is_new:
         st.rerun()

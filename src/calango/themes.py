@@ -1,3 +1,5 @@
+# src/calango/themes.py
+
 import streamlit as st
 
 THEMES = {
@@ -60,13 +62,11 @@ def apply_theme(theme_name):
         color: {theme["textColor"]};
     }}
 
-    /* THE TOP NAVIGATION BAR */
     header[data-testid="stHeader"] {{
         background-color: {theme["backgroundColor"]} !important;
         border-bottom: 1px solid {theme["primaryColor"]};
     }}
 
-    /* The Hamburger Menu & Icons */
     header[data-testid="stHeader"] svg,
     header[data-testid="stHeader"] button {{
         fill: {theme["headerColor"]} !important;
@@ -83,11 +83,11 @@ def apply_theme(theme_name):
     }}
 
     /* --- 3. TEXT & LABELS --- */
-    p, li, label, .stMarkdown, div.stText, span, div[data-testid="stMetricValue"] {{
+    p, li, label, div.stText, span, div[data-testid="stMetricValue"], .stMarkdown p, .stMarkdown li {{
         color: {theme["textColor"]} !important;
     }}
 
-    /* --- 4. BUTTONS --- */
+    /* --- 4. BUTTONS (GLOBAL) --- */
     div.stButton > button,
     div[data-testid="stFormSubmitButton"] > button {{
         background-color: {theme["primaryColor"]} !important;
@@ -100,32 +100,62 @@ def apply_theme(theme_name):
         box-shadow: 0 0 10px {theme["primaryColor"]};
     }}
 
-    /* --- 5. THE IMPORT BACKUP BOX --- */
-    div[data-testid="stFileUploader"] section {{
+    /* --- 5. THE IMPORT BACKUP BOX (FILE UPLOADER) --- */
+    [data-testid="stFileUploader"] section {{
         background-color: {theme["backgroundColor"]} !important;
         border: 2px dashed {theme["primaryColor"]} !important;
-    }}
-    div[data-testid="stFileUploader"] button {{
-        background-color: {theme["primaryColor"]} !important;
-        color: {theme["buttonTextColor"]} !important;
-        border: none !important;
-    }}
-    div[data-testid="stFileUploader"] span,
-    div[data-testid="stFileUploader"] small {{
         color: {theme["textColor"]} !important;
     }}
-    label[data-testid="stWidgetLabel"] p {{
-        color: {theme["headerColor"]} !important;
-        font-weight: bold !important;
+    [data-testid="stFileUploaderDropzone"] {{
+        background-color: {theme["backgroundColor"]} !important;
     }}
 
-    /* --- 6. SIDEBAR --- */
+    /* CORREÇÃO DO BOTÃO "Browse files" */
+    [data-testid="stFileUploader"] button {{
+        background-color: {theme["primaryColor"]} !important;
+        color: {theme["buttonTextColor"]} !important;
+        border: 1px solid {theme["headerColor"]} !important;
+    }}
+
+    [data-testid="stFileUploader"] label p {{
+        color: {theme["headerColor"]} !important;
+    }}
+    [data-testid="stFileUploader"] svg {{
+        fill: {theme["primaryColor"]} !important;
+    }}
+    [data-testid="stFileUploader"] small, [data-testid="stFileUploader"] span {{
+        color: {theme["textColor"]} !important;
+    }}
+
+    /* --- 6. CODE BLOCKS --- */
+    code {{
+        background-color: #1e1e1e !important;
+        color: #4ade80 !important;
+        padding: 0.2em 0.4em !important;
+        border-radius: 4px !important;
+    }}
+    pre {{
+        background-color: #1e1e1e !important;
+        border: 1px solid {theme["primaryColor"]} !important;
+        border-radius: 8px !important;
+        padding: 1em !important;
+    }}
+    pre code {{
+        background-color: transparent !important;
+        color: inherit !important;
+        padding: 0 !important;
+    }}
+    .stMarkdown span {{
+        color: inherit;
+    }}
+
+    /* --- 7. SIDEBAR --- */
     section[data-testid="stSidebar"] {{
         background-color: {theme["backgroundColor"]};
         border-right: 1px solid {theme["primaryColor"]};
     }}
 
-    /* --- 7. INPUTS & DROPDOWNS --- */
+    /* --- 8. INPUTS & DROPDOWNS --- */
     .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] > div {{
         background-color: {theme["backgroundColor"]} !important;
         color: {theme["textColor"]} !important;
