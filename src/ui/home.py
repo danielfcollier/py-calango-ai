@@ -1,8 +1,8 @@
 # src/ui/home.py
+
 import streamlit as st
 from calango.core import CalangoEngine
-from calango.database import SessionManager, PersonaManager
-import time
+from calango.database import PersonaManager, SessionManager
 
 # Initialize Logic
 engine = CalangoEngine()
@@ -74,9 +74,7 @@ with st.sidebar:
                     # Extract user prompt from the message history list
                     user_content = turn["messages"][-1]["content"]
                     reconstructed.append({"role": "user", "content": user_content})
-                    reconstructed.append(
-                        {"role": "assistant", "content": turn["reply"]}
-                    )
+                    reconstructed.append({"role": "assistant", "content": turn["reply"]})
 
                 st.session_state.messages = reconstructed
                 st.rerun()
@@ -103,9 +101,7 @@ else:
         st.session_state.messages[0]["content"] = system_prompt_text
     else:
         # Legacy chat without system prompt -> Insert it at the top
-        st.session_state.messages.insert(
-            0, {"role": "system", "content": system_prompt_text}
-        )
+        st.session_state.messages.insert(0, {"role": "system", "content": system_prompt_text})
 
 
 # --- MAIN CHAT INTERFACE ---
@@ -120,9 +116,7 @@ if prompt := st.chat_input("Ask Calango..."):
     # 1. Handle New Session Creation
     is_new = False
     if st.session_state.session_id is None:
-        st.session_state.session_id = session_mgr.create_session(
-            title="New Conversation"
-        )
+        st.session_state.session_id = session_mgr.create_session(title="New Conversation")
         is_new = True
 
     # 2. Append User Message

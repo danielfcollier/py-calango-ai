@@ -1,6 +1,6 @@
 import streamlit as st
 from calango.database import ConfigManager, PersonaManager
-from calango.themes import apply_theme, THEMES
+from calango.themes import THEMES, apply_theme
 
 db = ConfigManager()
 persona_mgr = PersonaManager()
@@ -8,9 +8,7 @@ persona_mgr = PersonaManager()
 st.title("⚙️ A Toca (Settings)")
 st.caption("Configure your Calango's brain, soul, and skin.")
 
-tab_config, tab_personas, tab_theme = st.tabs(
-    ["🔌 Providers", "🦎 Mimetismo (Personas)", "🎨 Camuflagem (Theme)"]
-)
+tab_config, tab_personas, tab_theme = st.tabs(["🔌 Providers", "🦎 Mimetismo (Personas)", "🎨 Camuflagem (Theme)"])
 
 with tab_config:
     st.subheader("📡 LLM Uplinks (Providers)")
@@ -19,12 +17,8 @@ with tab_config:
     with st.form("provider_form"):
         c1, c2 = st.columns(2)
         name = c1.text_input("Provider Name (e.g., openai, anthropic)")
-        key = c2.text_input(
-            "API Key", type="password", help="Stored locally on your machine."
-        )
-        models = st.text_input(
-            "Models (comma separated)", "gpt-4o, gpt-3.5-turbo, claude-3-opus"
-        )
+        key = c2.text_input("API Key", type="password", help="Stored locally on your machine.")
+        models = st.text_input("Models (comma separated)", "gpt-4o, gpt-3.5-turbo, claude-3-opus")
 
         submitted = st.form_submit_button("💾 Save Connection")
         if submitted:
@@ -75,9 +69,7 @@ with tab_personas:
         with st.expander(f"🎭 {p['name']}"):
             c1, c2 = st.columns([3, 1])
             with c1:
-                edit_prompt = st.text_area(
-                    "System Prompt", p["prompt"], key=f"txt_{p['name']}", height=100
-                )
+                edit_prompt = st.text_area("System Prompt", p["prompt"], key=f"txt_{p['name']}", height=100)
 
             col_save, col_del = st.columns([1, 1])
             with col_save:

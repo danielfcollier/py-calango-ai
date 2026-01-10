@@ -1,7 +1,8 @@
+import time
+
 import streamlit as st
 from calango.core import CalangoEngine
 from calango.database import InteractionManager
-import time
 
 engine = CalangoEngine()
 db = InteractionManager()
@@ -11,9 +12,7 @@ st.caption("Put models in the ring. See who survives.")
 
 with st.expander("⚙️ Match Configuration", expanded=True):
     # Choose how many models to fight (2 to 4)
-    num_contenders = st.slider(
-        "Number of Contenders", min_value=2, max_value=4, value=2
-    )
+    num_contenders = st.slider("Number of Contenders", min_value=2, max_value=4, value=2)
 
 st.divider()
 
@@ -29,10 +28,10 @@ for i, col in enumerate(cols):
             st.error("No providers.")
             continue
 
-        prov = st.selectbox(f"Provider", providers, key=f"p_{i}")
+        prov = st.selectbox("Provider", providers, key=f"p_{i}")
 
         models = engine.get_models_for_provider(prov)
-        mod = st.selectbox(f"Model", models, key=f"m_{i}")
+        mod = st.selectbox("Model", models, key=f"m_{i}")
 
         contenders.append({"provider": prov, "model": mod, "col": col})
 

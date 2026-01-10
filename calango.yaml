@@ -1,0 +1,6 @@
+providers:
+  test-provider:
+    api_key: sk-fake
+    base_url: null
+    models:
+    - gpt-test

@@ -1,7 +1,8 @@
 import pandas as pd
 import plotly.express as px
-from calango.database import InteractionManager
+
 import streamlit as st
+from calango.database import InteractionManager
 
 db = InteractionManager()
 
@@ -60,9 +61,7 @@ with c1:
 
 with c2:
     st.subheader("📈 Activity Flow")
-    daily_usage = (
-        df.set_index("timestamp").resample("D")["total_tokens"].sum().reset_index()
-    )
+    daily_usage = df.set_index("timestamp").resample("D")["total_tokens"].sum().reset_index()
 
     if not daily_usage.empty:
         fig_line = px.bar(
@@ -85,13 +84,9 @@ st.subheader("🗂️ The Cauldron (Logs)")
 
 filter_col1, filter_col2 = st.columns(2)
 with filter_col1:
-    selected_provider_filter = st.multiselect(
-        "Filter by Realm (Provider)", options=df["provider"].unique()
-    )
+    selected_provider_filter = st.multiselect("Filter by Realm (Provider)", options=df["provider"].unique())
 with filter_col2:
-    selected_model_filter = st.multiselect(
-        "Filter by Spirit (Model)", options=df["model"].unique()
-    )
+    selected_model_filter = st.multiselect("Filter by Spirit (Model)", options=df["model"].unique())
 
 filtered_df = df.copy()
 if selected_provider_filter:
@@ -102,9 +97,7 @@ if selected_model_filter:
 filtered_df = filtered_df.sort_values(by="timestamp", ascending=False)
 
 st.dataframe(
-    filtered_df[
-        ["timestamp", "provider", "model", "total_tokens", "cost_usd", "messages"]
-    ],
+    filtered_df[["timestamp", "provider", "model", "total_tokens", "cost_usd", "messages"]],
     use_container_width=True,
     column_config={
         "timestamp": st.column_config.DatetimeColumn("Time", format="D MMM, HH:mm"),

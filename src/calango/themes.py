@@ -59,36 +59,36 @@ def apply_theme(theme_name):
         background-color: {theme["backgroundColor"]};
         color: {theme["textColor"]};
     }}
-    
+
     /* THE TOP NAVIGATION BAR */
     header[data-testid="stHeader"] {{
         background-color: {theme["backgroundColor"]} !important;
         border-bottom: 1px solid {theme["primaryColor"]};
     }}
-    
+
     /* The Hamburger Menu & Icons */
-    header[data-testid="stHeader"] svg, 
+    header[data-testid="stHeader"] svg,
     header[data-testid="stHeader"] button {{
         fill: {theme["headerColor"]} !important;
         color: {theme["headerColor"]} !important;
     }}
-    
+
     /* --- 2. CONTENT HEADERS --- */
-    h1, h2, h3, h4, h5, h6, 
-    .stHeadingContainer, 
+    h1, h2, h3, h4, h5, h6,
+    .stHeadingContainer,
     span[data-testid="stHeader"] {{
         color: {theme["headerColor"]} !important;
         font-weight: 800 !important;
         text-shadow: 0px 0px 1px rgba(0,0,0,0.5);
     }}
-    
+
     /* --- 3. TEXT & LABELS --- */
     p, li, label, .stMarkdown, div.stText, span, div[data-testid="stMetricValue"] {{
         color: {theme["textColor"]} !important;
     }}
-    
+
     /* --- 4. BUTTONS --- */
-    div.stButton > button, 
+    div.stButton > button,
     div[data-testid="stFormSubmitButton"] > button {{
         background-color: {theme["primaryColor"]} !important;
         color: {theme["buttonTextColor"]} !important;
@@ -124,14 +124,14 @@ def apply_theme(theme_name):
         background-color: {theme["backgroundColor"]};
         border-right: 1px solid {theme["primaryColor"]};
     }}
-    
+
     /* --- 7. INPUTS & DROPDOWNS --- */
     .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] > div {{
         background-color: {theme["backgroundColor"]} !important;
         color: {theme["textColor"]} !important;
         border: 1px solid {theme["primaryColor"]} !important;
     }}
-    
+
     div[data-baseweb="popover"], div[data-baseweb="menu"] {{
         background-color: {theme["backgroundColor"]} !important;
         border: 1px solid {theme["primaryColor"]} !important;

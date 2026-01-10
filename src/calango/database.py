@@ -1,9 +1,10 @@
-from tinydb import TinyDB, Query
+import os
 import uuid
 from datetime import datetime
-import os
-import yaml
 from pathlib import Path
+
+import yaml
+from tinydb import Query, TinyDB
 
 APP_NAME = ".calango"
 APP_DIR = Path.home() / APP_NAME
@@ -26,9 +27,7 @@ class ConfigManager:
 
     def upsert_provider(self, name: str, api_key: str, models: list):
         Provider = Query()
-        self.config_table.upsert(
-            {"name": name, "api_key": api_key, "models": models}, Provider.name == name
-        )
+        self.config_table.upsert({"name": name, "api_key": api_key, "models": models}, Provider.name == name)
 
     def load_theme_setting(self):
         """Get current theme preference"""
@@ -47,7 +46,7 @@ class ConfigManager:
         if not os.path.exists(yaml_path):
             return False
 
-        with open(yaml_path, "r") as f:
+        with open(yaml_path) as f:
             data = yaml.safe_load(f)
 
         self.config_table.truncate()
@@ -71,11 +70,11 @@ class PersonaManager:
             {"name": "Calango (Default)", "prompt": "You are a helpful AI assistant."},
             {
                 "name": "Python Expert",
-                "prompt": "You are a Senior Python Engineer. Be concise, use type hints, and focus on clean, performant code.",
+                "prompt": "You are a Senior Python Engineer. Be concise, use type hints, and focus on clean, performant code.",  # noqa
             },
             {
                 "name": "Creative Writer",
-                "prompt": "You are a visionary writer. Use evocative language, vivid imagery, and varied sentence structures.",
+                "prompt": "You are a visionary writer. Use evocative language, vivid imagery, and varied sentence structures.",  # noqa
             },
         ]
         for p in defaults:
@@ -83,9 +82,7 @@ class PersonaManager:
 
     def create_persona(self, name, prompt):
         Persona = Query()
-        self.personas_table.upsert(
-            {"name": name, "prompt": prompt}, Persona.name == name
-        )
+        self.personas_table.upsert({"name": name, "prompt": prompt}, Persona.name == name)
 
     def delete_persona(self, name):
         Persona = Query()
@@ -108,9 +105,7 @@ class SessionManager:
 
     def create_session(self, title="New Chat"):
         session_id = str(uuid.uuid4())
-        self.sessions_table.insert(
-            {"id": session_id, "title": title, "created_at": datetime.now().isoformat()}
-        )
+        self.sessions_table.insert({"id": session_id, "title": title, "created_at": datetime.now().isoformat()})
         return session_id
 
     def update_session_title(self, session_id, new_title):
@@ -137,16 +132,14 @@ class InteractionManager:
         self.db = TinyDB(DB_PATH)
         self.history_table = self.db.table("history")
 
-    def log_interaction(
-        self, provider, model, messages, response, session_id, cost=0.0
-    ):
+    def log_interaction(self, provider, model, messages, response, session_id, cost=0.0):
         # Handle streaming "MockResponse" objects and real objects
         try:
             input_tokens = response.usage.prompt_tokens
             output_tokens = response.usage.completion_tokens
             total_tokens = response.usage.total_tokens
             reply_content = response.choices[0].message.content
-        except:
+        except Exception:
             # Fallback if structure is slightly different
             input_tokens = 0
             output_tokens = 0

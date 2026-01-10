@@ -12,3 +12,4 @@ wheels/
 .calango/
 .env
 *.spec
+.coverage

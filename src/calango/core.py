@@ -1,4 +1,5 @@
 from litellm import completion, completion_cost, token_counter
+
 from calango.database import ConfigManager, InteractionManager, SessionManager
 
 
@@ -15,9 +16,7 @@ class CalangoEngine:
         provider = self.config.get_provider(provider_name)
         return provider.get("models", []) if provider else []
 
-    def run_chat(
-        self, provider_name, model_name, messages, session_id, is_new_session=False
-    ):
+    def run_chat(self, provider_name, model_name, messages, session_id, is_new_session=False):
         """
         Yields chunks of text for streaming.
         Logs to DB after the stream finishes.
@@ -73,13 +72,11 @@ class CalangoEngine:
                     self.choices = [MockChoice(choice_content)]
                     self.model = model
 
-            mock_response = MockResponse(
-                MockUsage(input_tokens, output_tokens), full_content, model_name
-            )
+            mock_response = MockResponse(MockUsage(input_tokens, output_tokens), full_content, model_name)
 
             try:
                 cost = completion_cost(completion_response=mock_response)
-            except:
+            except Exception:
                 cost = 0.0
 
             # Log to DB
@@ -95,11 +92,7 @@ class CalangoEngine:
             # Auto-Update Title (for new sessions)
             if is_new_session and len(messages) > 0:
                 first_prompt = messages[-1]["content"]
-                new_title = (
-                    (first_prompt[:30] + "..")
-                    if len(first_prompt) > 30
-                    else first_prompt
-                )
+                new_title = (first_prompt[:30] + "..") if len(first_prompt) > 30 else first_prompt
                 self.sessions.update_session_title(session_id, new_title)
 
         except Exception as e:
