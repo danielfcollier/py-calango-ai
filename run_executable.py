@@ -1,6 +1,6 @@
-# run_executable.py
 import os
 import sys
+
 import streamlit.web.cli as stcli
 
 
@@ -19,7 +19,6 @@ if __name__ == "__main__":
     app_path = resolve_path(os.path.join("src", "app.py"))
 
     # 2. Trick Streamlit into thinking it was run via CLI
-    # We strip the first argument (the executable name) and replace it
     sys.argv = [
         "streamlit",
         "run",

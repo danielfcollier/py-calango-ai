@@ -40,7 +40,6 @@ jobs:
           uv sync --group dev
 
       - name: 🔨 Build with PyInstaller
-        # This uses the .spec file we created earlier
         run: |
           uv run pyinstaller calango.spec --clean
 
