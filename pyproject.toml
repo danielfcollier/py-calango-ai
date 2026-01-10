@@ -1,7 +1,7 @@
 [project]
 name = "calango-ai"
 version = "0.1.0"
-description = "A shapeshifting LLM wrapper with multi-provider support."
+description = "A shapeshifting local AI interface. Chat with GPT-4, Claude, and local models. 🇧🇷 🦎"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -18,11 +18,9 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# --- FIX 1: Explicitly map the package ---
 [tool.hatch.build.targets.wheel]
 packages = ["src/calango"]
 
-# --- FIX 2: Use the new standard for dev dependencies ---
 [dependency-groups]
 dev = [
     "ruff>=0.3.0",

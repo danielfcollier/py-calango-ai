@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: install clean clean-all format lint run test check
+.PHONY: install clean clean-all format lint run test check build
 
 # Variables
 VENV_BIN = .venv/bin
@@ -26,6 +26,10 @@ test: ## Run tests with pytest
 # --- Execution ---
 run: ## Run the Streamlit app
 	$(UV) run streamlit run src/app.py
+
+# --- Build ---
+build: ## Build the executable using PyInstaller
+	$(UV) run pyinstaller calango.spec --clean --noconfirm
 
 # --- Cleaning ---
 clean: ## Remove cache files and artifacts

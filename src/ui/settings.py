@@ -8,11 +8,9 @@ persona_mgr = PersonaManager()
 st.title("⚙️ A Toca (Settings)")
 st.caption("Configure your Calango's brain, soul, and skin.")
 
-tab_config, tab_personas, tab_theme = st.tabs([
-    "🔌 Providers", 
-    "🦎 Mimetismo (Personas)", 
-    "🎨 Camuflagem (Theme)"
-])
+tab_config, tab_personas, tab_theme = st.tabs(
+    ["🔌 Providers", "🦎 Mimetismo (Personas)", "🎨 Camuflagem (Theme)"]
+)
 
 with tab_config:
     st.subheader("📡 LLM Uplinks (Providers)")
@@ -21,8 +19,12 @@ with tab_config:
     with st.form("provider_form"):
         c1, c2 = st.columns(2)
         name = c1.text_input("Provider Name (e.g., openai, anthropic)")
-        key = c2.text_input("API Key", type="password", help="Stored locally on your machine.")
-        models = st.text_input("Models (comma separated)", "gpt-4o, gpt-3.5-turbo, claude-3-opus")
+        key = c2.text_input(
+            "API Key", type="password", help="Stored locally on your machine."
+        )
+        models = st.text_input(
+            "Models (comma separated)", "gpt-4o, gpt-3.5-turbo, claude-3-opus"
+        )
 
         submitted = st.form_submit_button("💾 Save Connection")
         if submitted:
@@ -49,9 +51,9 @@ with tab_personas:
         with st.form("new_persona_form"):
             new_name = st.text_input("Persona Name (e.g., 'Python Guru', 'Pirate')")
             new_prompt = st.text_area(
-                "System Prompt (Instincts)", 
-                height=150, 
-                placeholder="You are a senior Python developer. You prefer clean code over complex one..."
+                "System Prompt (Instincts)",
+                height=150,
+                placeholder="You are a senior Python developer. You prefer clean code over complex one...",
             )
             if st.form_submit_button("🐣 Hatch Persona"):
                 if new_name and new_prompt:
