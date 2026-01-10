@@ -1,6 +1,11 @@
+import os
+
+from dotenv import load_dotenv
 from litellm import completion, completion_cost, token_counter
 
 from calango.database import ConfigManager, InteractionManager, SessionManager
+
+load_dotenv()
 
 
 class CalangoEngine:
@@ -22,30 +27,54 @@ class CalangoEngine:
         Logs to DB after the stream finishes.
         """
         provider_data = self.config.get_provider(provider_name)
-        if not provider_data:
-            yield "Error: Provider not configured."
+
+        # 1. Correct mapping for Google AI Studio (Gemini)
+        # Standardizing on GEMINI_API_KEY and 'gemini/' prefix prevents Vertex AI authentication errors
+        if provider_name.lower() in ["google", "gemini"]:
+            env_key_name = "GEMINI_API_KEY"
+            prefix = "gemini"
+        else:
+            env_key_name = f"{provider_name.upper()}_API_KEY"
+            prefix = provider_name.lower()
+
+        # 2. Try to get API Key from environment variables first
+        api_key = os.getenv(env_key_name)
+
+        # 3. Fallback to database if no environment variable is set or if it's a placeholder
+        if not api_key or api_key.startswith("${"):
+            if provider_data:
+                api_key = provider_data.get("api_key")
+
+        if not api_key:
+            yield f"Error: No API key found for {provider_name} in .env ({env_key_name}) or Settings."
             return
 
-        api_key = provider_data.get("api_key")
+        # 4. Prefix the model name with the provider (e.g., 'groq/llama-3.1-8b-instant')
+        # This is required for LiteLLM to route the request to the correct provider
+        full_model_string = f"{prefix}/{model_name}"
 
         try:
             stream = completion(
-                model=model_name,
+                model=full_model_string,
                 messages=messages,
                 api_key=api_key,
                 stream=True,
             )
-        except Exception as e:
-            yield f"Error: {str(e)}"
-            return
 
-        full_content = ""
-        for chunk in stream:
-            # LiteLLM yields chunks with .choices[0].delta.content
-            content = chunk.choices[0].delta.content or ""
-            if content:
-                full_content += content
-                yield content
+            full_content = ""
+
+            for chunk in stream:
+                content = chunk.choices[0].delta.content or ""
+                if content:
+                    full_content += content
+                    yield content
+
+        except Exception as e:
+            if "429" in str(e) or "RateLimitError" in str(type(e)).__name__:
+                yield "🦎 *The Calango is exhausted!* (Rate limit reached). Please wait a moment or check your quota."
+            else:
+                yield f"Error: {str(e)}"
+            return
 
         # Post-Stream: Calculate Usage & Log
         try:
