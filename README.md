@@ -17,7 +17,8 @@ Calango AI is designed to be a **privacy-first LLM aggregator**. I believe that:
 ## ✨ Why use Calango?
 
 * **🦎 Mimetismo (Mimicry):** Don't just chat with a robot. Use the **Persona Engineering** tab to turn your AI into a **Python Expert**, a **Creative Writer**, or a **Pirate Captain**. It adapts to your needs like a lizard blending into the leaves.
-* **🥊 A Rinha (The Ring):** Not sure which AI is smarter or cheaper? Pit two models against each other side-by-side in the arena to see who wins.
+* **🥊 A Rinha (The Ring):** Not sure which AI is smarter or cheaper? Pit **multiple models (up to 4)** against each other side-by-side in the arena to see who wins.
+* **🧬 DNA Injection:** Instantly configure your providers and preferences by uploading a `config.yaml` backup file.
 * **🧠 A Cuca (The Brain):** A comprehensive dashboard to track your token usage, costs, and chat history. "She sees everything."
 * **🔒 Privacy First:** Your API keys and chat history are stored **locally on your computer**. I don't see them. Big Tech doesn't see them. Only you see them.
 * **💸 Pay As You Go:** Use your own API keys. This is often significantly cheaper than a fixed monthly subscription.
@@ -33,8 +34,6 @@ I've ditched the generic "Dark Mode" for themes that celebrate the vibrant color
 * **🟦 Gralha:** The *Gralha Azul* (Azure Jay), the planter of Araucaria forests.
 * **🌸 Boto:** The *Boto Cor-de-Rosa*, the shapeshifting legend of the Amazon.
 
-
-
 ## 🛠️ For Developers (Quick Start)
 
 Use `make` to handle dependencies, environments, and local services.
@@ -48,7 +47,7 @@ Use `make` to handle dependencies, environments, and local services.
 
 ```bash
 # Clone the repository
-git clone https://github.com/danielfcollier/calango-ai.git
+git clone [https://github.com/danielfcollier/calango-ai.git](https://github.com/danielfcollier/calango-ai.git)
 cd calango-ai
 
 # Install dependencies (creates virtualenv automatically)
@@ -63,12 +62,13 @@ make run
 Instead of pasting keys into the UI every time, developers can use a `.env` file.
 
 1. Copy the example file:
+
 ```bash
 cp .env.example .env
 ```
 
-
 2. Edit `.env` and add your keys:
+
 ```ini
 OPENAI_API_KEY="<YOUR_API_KEY>"
 ANTHROPIC_API_KEY="<YOUR_API_KEY>"
@@ -76,9 +76,7 @@ GOOGLE_API_KEY="<YOUR_API_KEY>"
 GROQ_API_KEY="<YOUR_API_KEY>"
 ```
 
-
 > **⚠️ CAUTION:** Never commit your `.env` file to version control! It is included in `.gitignore` by default to prevent accidental leaks.
-
 
 ### 3. Local LLMs (Ollama + Docker)
 
@@ -91,7 +89,17 @@ make setup-ollama
 
 *Once finished, select "Ollama" as your provider in the Calango UI.*
 
+### 4. Running Tests
 
+Ensure the architecture is sound before pushing changes.
+
+```bash
+# Run Unit Tests
+pytest tests/unit
+
+# Run E2E UI Tests
+pytest tests/e2e
+```
 
 ## 🚀 How to Install (For Users)
 
@@ -115,17 +123,14 @@ No coding required. Just download and run.
 2. Right-click -> Properties -> Permissions -> Check **"Allow executing file"**.
 3. Run it.
 
-
-
 ## 🗺️ Roadmap & Goals
 
-Here is what's coming next for Calango:
+We are actively evolving Calango from a local tool to a production-grade platform:
 
-* **Local Privacy RAG:** Upload PDFs, text files, or Markdown docs and chat with them securely without the data leaving your machine.
-* **Repository Chatter:** Point Calango to a local folder (codebase) and ask questions about the architecture or specific functions.
-* **Web RAG:** Give the AI eyes! Allow it to search the web to answer current event questions.
-
-
+* **🌍 Globalization:** Native multi-language support (English/Portuguese).
+* **🧠 Local RAG:** Give the AI "Long-Term Memory" by chatting with your local PDFs and documents.
+* **🔐 Identity & Control:** Multi-user support with authentication, quotas, and budgets.
+* **🗄️ Scalable Architecture:** Support for PostgreSQL and Async processing for high-performance deployments.
 
 ## ⚡ Supported Providers
 
@@ -142,8 +147,6 @@ Calango is the *engine*, but you need *gas* (an API Key) to run it.
 
 * **Ollama:** Runs locally via Docker (see Developer instructions).
 
-
-
 ## ☕ Support the Project
 
 I am a Brazilian developer building open-source tools for the world. If you enjoy Calango AI, consider supporting the development!
@@ -155,8 +158,6 @@ I am a Brazilian developer building open-source tools for the world. If you enjo
 ### 🌍 International Support
 
 [☕  Buy me a coffee](https://www.buymeacoffee.com/danielcollier)
-
-
 
 ## ❓ FAQ
 
