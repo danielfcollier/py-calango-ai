@@ -1,29 +1,56 @@
 # src/ui/rinha.py
 
 import time
+from datetime import datetime  # <--- Added for timestamp
+
+from tinydb import TinyDB
 
 import streamlit as st
 from calango.core import CalangoEngine
-from calango.database import InteractionManager, PersonaManager
+from calango.database import ConfigManager, InteractionManager, PersonaManager
+from calango.themes import render_copy_button
 
+# --- Initialize Engines ---
 engine = CalangoEngine()
 db = InteractionManager()
 persona_mgr = PersonaManager()
+config_db = ConfigManager()
+
+# Get theme for JS buttons
+current_theme_name = config_db.load_theme_setting()
+
+# --- Initialize Persistence (Rinha Store) ---
+rinha_db = TinyDB("rinha_store.json")
+
+# --- 1. Load History from DB on Startup ---
+if "rinha_history" not in st.session_state:
+    st.session_state.rinha_history = rinha_db.all()
 
 st.title("🥊 A Rinha (The Arena)")
 st.caption("Coloque os modelos no ringue. Veja quem sobrevive.")
 
+# --- 2. Configuration & Reset Button ---
 with st.expander("⚙️ Configuração do Combate", expanded=True):
-    col_cfg1, col_cfg2 = st.columns([2, 1])
+    col_cfg1, col_cfg2, col_cfg3 = st.columns([2, 1, 1])
+
     with col_cfg1:
         num_contenders = st.slider("Número de Lutadores", min_value=2, max_value=4, value=2)
+
     with col_cfg2:
-        # Adicionado: Seleção global de Persona para o desafio
         all_personas = [p["name"] for p in persona_mgr.get_all_personas()]
         selected_persona = st.selectbox("Persona (Soul)", all_personas if all_personas else ["Default"])
 
+    with col_cfg3:
+        st.write("")
+        st.write("")
+        if st.button("🧹 Limpar Rinha"):
+            st.session_state.rinha_history = []
+            rinha_db.truncate()
+            st.rerun()
+
 st.divider()
 
+# --- 3. Contender Selection ---
 contenders = []
 cols = st.columns(num_contenders)
 
@@ -44,14 +71,42 @@ for i, col in enumerate(cols):
 
 st.divider()
 
+# --- 4. Display History (From Persistence) ---
+for round_entry in st.session_state.rinha_history:
+    st.chat_message("user").write(round_entry["prompt"])
+
+    results = round_entry.get("results", [])
+    if results:
+        r_cols = st.columns(len(results))
+        for idx, res in enumerate(results):
+            with r_cols[idx]:
+                st.markdown(f"**{res['model']}**")
+                with st.chat_message("assistant"):
+                    st.write(res["content"])
+
+                    # JS Copy Button
+                    render_copy_button(res["content"], current_theme_name)
+
+                    # Metadata Caption (Time | Model | Persona)
+                    if "time" in res:
+                        st.caption(f"🕒 {res['time']} | 🤖 {res.get('model')} | 🎭 {res.get('persona')}")
+
+                    # Stats (Cost/Tokens)
+                    if "stats" in res and res["stats"]:
+                        st.success(res["stats"])
+    st.divider()
+
+# --- 5. New Battle Input ---
 if prompt := st.chat_input("Lance um desafio no ringue..."):
     st.chat_message("user").write(prompt)
 
-    # Colunas para as respostas
     out_cols = st.columns(num_contenders)
-
-    # Sanitização: O core.py já faz isso, mas enviamos apenas o essencial
     messages = [{"role": "user", "content": prompt}]
+
+    current_round_results = []
+
+    # Generate timestamp once for the whole round
+    now_str = datetime.now().strftime("%H:%M:%S")
 
     for i, contender in enumerate(contenders):
         with out_cols[i]:
@@ -59,23 +114,28 @@ if prompt := st.chat_input("Lance um desafio no ringue..."):
 
             with st.chat_message("assistant"):
                 with st.spinner("Lutando..."):
-                    # O core.py agora lida com o erro e faz o yield de uma string amigável
                     gen = engine.run_chat(
                         provider_name=contender["provider"],
                         model_name=contender["model"],
                         messages=messages,
                         session_id="rinha-mode",
-                        persona_name=selected_persona,  # Parâmetro obrigatório adicionado
+                        persona_name=selected_persona,
                         is_new_session=False,
                     )
 
-                    # O write_stream exibirá o erro como texto se o core.py falhar
-                    st.write_stream(gen)
+                    # 1. Generate & Display Text
+                    full_response = st.write_stream(gen)
 
-                    # Busca Estatísticas (Aguardando levemente o commit do TinyDB)
+                    # 2. Render Copy Button IMMEDIATELY
+                    render_copy_button(full_response, current_theme_name)
+
+                    # 3. Render Metadata IMMEDIATELY
+                    st.caption(f"🕒 {now_str} | 🤖 {contender['model']} | 🎭 {selected_persona}")
+
+                    # Fetch Stats
+                    stats_text = None
                     time.sleep(0.2)
                     try:
-                        # Pegamos o último log específico deste modelo na rinha
                         history = db.history_table.all()
                         last_log = next(
                             (
@@ -85,11 +145,27 @@ if prompt := st.chat_input("Lance um desafio no ringue..."):
                             ),
                             None,
                         )
-
                         if last_log:
                             cost = last_log.get("cost_usd", 0.0)
-                            # Usando .get() para evitar erros se o usage estiver vazio por falha
                             tokens = last_log.get("usage", {}).get("total_tokens", 0)
-                            st.success(f"💰 ${cost:.5f} | ⚡ {tokens} tok")
+                            stats_text = f"💰 ${cost:.5f} | ⚡ {tokens} tok"
+                            st.success(stats_text)
                     except Exception:
                         st.caption("⚠️ Erro ao ler stats.")
+
+                    # Add result to storage (including new metadata)
+                    current_round_results.append(
+                        {
+                            "model": contender["model"],
+                            "content": full_response,
+                            "stats": stats_text,
+                            "time": now_str,  # <--- Saved
+                            "persona": selected_persona,  # <--- Saved
+                        }
+                    )
+
+    # --- Save to Persistence ---
+    new_round = {"prompt": prompt, "results": current_round_results}
+
+    st.session_state.rinha_history.append(new_round)
+    rinha_db.insert(new_round)

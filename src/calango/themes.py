@@ -1,6 +1,9 @@
 # src/calango/themes.py
 
+import json
+
 import streamlit as st
+import streamlit.components.v1 as components  # <--- Required for JS injection
 
 THEMES = {
     "Calango (Default)": {
@@ -87,17 +90,31 @@ def apply_theme(theme_name):
         color: {theme["textColor"]} !important;
     }}
 
-    /* --- 4. BUTTONS (GLOBAL) --- */
+    /* --- 4. BUTTONS & POPOVERS --- */
     div.stButton > button,
-    div[data-testid="stFormSubmitButton"] > button {{
+    div[data-testid="stFormSubmitButton"] > button,
+    button[data-testid="stPopoverButton"] {{
         background-color: {theme["primaryColor"]} !important;
         color: {theme["buttonTextColor"]} !important;
         border: 1px solid {theme["headerColor"]} !important;
         font-weight: bold !important;
     }}
-    div.stButton > button:hover {{
+
+    div.stButton > button:hover,
+    div[data-testid="stFormSubmitButton"] > button:hover,
+    button[data-testid="stPopoverButton"]:hover {{
         filter: brightness(1.2);
         box-shadow: 0 0 10px {theme["primaryColor"]};
+        color: {theme["buttonTextColor"]} !important;
+        border: 1px solid {theme["headerColor"]} !important;
+    }}
+
+    button[data-testid="stPopoverButton"] div,
+    button[data-testid="stPopoverButton"] p,
+    button[data-testid="stPopoverButton"] span,
+    button[data-testid="stPopoverButton"] svg {{
+        color: {theme["buttonTextColor"]} !important;
+        fill: {theme["buttonTextColor"]} !important;
     }}
 
     /* --- 5. THE IMPORT BACKUP BOX (FILE UPLOADER) --- */
@@ -109,14 +126,11 @@ def apply_theme(theme_name):
     [data-testid="stFileUploaderDropzone"] {{
         background-color: {theme["backgroundColor"]} !important;
     }}
-
-    /* CORREÇÃO DO BOTÃO "Browse files" */
     [data-testid="stFileUploader"] button {{
         background-color: {theme["primaryColor"]} !important;
         color: {theme["buttonTextColor"]} !important;
         border: 1px solid {theme["headerColor"]} !important;
     }}
-
     [data-testid="stFileUploader"] label p {{
         color: {theme["headerColor"]} !important;
     }}
@@ -174,6 +188,98 @@ def apply_theme(theme_name):
         background-color: {theme["primaryColor"]} !important;
         color: {theme["buttonTextColor"]} !important;
     }}
+
+    /* --- 9. EXPANDERS (Rinha Config) --- */
+    div[data-testid="stExpander"] details {{
+        background-color: {theme["backgroundColor"]} !important;
+        border: 1px solid {theme["primaryColor"]} !important;
+        color: {theme["textColor"]} !important;
+        border-radius: 8px !important;
+    }}
+    div[data-testid="stExpander"] details > summary {{
+        background-color: {theme["primaryColor"]} !important;
+        color: {theme["buttonTextColor"]} !important;
+        border-radius: 8px !important;
+    }}
+    div[data-testid="stExpander"] details > summary:hover {{
+        filter: brightness(1.2) !important;
+        color: {theme["buttonTextColor"]} !important;
+    }}
+    div[data-testid="stExpander"] details > summary svg,
+    div[data-testid="stExpander"] details > summary p,
+    div[data-testid="stExpander"] details > summary span {{
+        color: {theme["buttonTextColor"]} !important;
+        fill: {theme["buttonTextColor"]} !important;
+    }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
+
+
+# --- NON-NATIVE COMPONENT: JS COPY BUTTON ---
+def render_copy_button(text, theme_name="Calango (Default)"):
+    """
+    Renders a JavaScript-powered Copy Button using iframe injection.
+    Inherits colors from the current theme.
+    """
+    if theme_name not in THEMES:
+        theme_name = "Calango (Default)"
+
+    theme = THEMES[theme_name]
+    primary = theme["primaryColor"]
+    btn_text = theme["buttonTextColor"]
+
+    # Securely escape the text for JavaScript injection
+    safe_text = json.dumps(text)
+
+    html_code = f"""
+    <html>
+    <head>
+    <style>
+        body {{
+            margin: 0; padding: 0;
+            background-color: transparent;
+            font-family: sans-serif;
+            display: flex; align-items: center;
+        }}
+        .copy-btn {{
+            background-color: transparent;
+            color: {primary};
+            border: 1px solid {primary};
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }}
+        .copy-btn:hover {{
+            background-color: {primary};
+            color: {btn_text};
+        }}
+        .copy-btn:active {{
+            transform: scale(0.96);
+        }}
+    </style>
+    <script>
+    function copyToClipboard() {{
+        navigator.clipboard.writeText({safe_text}).then(function() {{
+            const btn = document.getElementById("btn");
+            btn.innerHTML = "✅ Copiado!";
+            setTimeout(() => {{ btn.innerHTML = "📄 Copiar Resposta"; }}, 2000);
+        }}, function(err) {{
+            console.error('Copy failed: ', err);
+        }});
+    }}
+    </script>
+    </head>
+    <body>
+        <button id="btn" class="copy-btn" onclick="copyToClipboard()">
+            📄 Copiar Resposta
+        </button>
+    </body>
+    </html>
+    """
+    # Render invisible iframe containing the button
+    components.html(html_code, height=45)
