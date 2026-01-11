@@ -12,7 +12,9 @@ from tinydb import Query, TinyDB
 
 import streamlit as st
 from calango.core import CalangoEngine
-from calango.database import ConfigManager, InteractionManager, PersonaManager
+
+# <--- Added APP_DIR to imports
+from calango.database import APP_DIR, ConfigManager, InteractionManager, PersonaManager
 from calango.themes import render_copy_button
 
 # Try to import tiktoken for accurate counting, otherwise fallback
@@ -31,7 +33,9 @@ config_db = ConfigManager()
 current_theme_name = config_db.load_theme_setting()
 
 # --- Initialize Persistence (Rinha Store) ---
-rinha_db = TinyDB("rinha_store.json")
+# We now use the global APP_DIR (e.g., ~/.calango/) instead of the current folder
+rinha_db_path = APP_DIR / "rinha_store.json"
+rinha_db = TinyDB(rinha_db_path)
 config_table = rinha_db.table("config")
 
 
