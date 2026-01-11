@@ -2,8 +2,9 @@
 
 import json
 
+import streamlit.components.v1 as components
+
 import streamlit as st
-import streamlit.components.v1 as components  # <--- Required for JS injection
 
 THEMES = {
     "Calango (Default)": {
@@ -91,6 +92,7 @@ def apply_theme(theme_name):
     }}
 
     /* --- 4. BUTTONS & POPOVERS --- */
+    /* General Buttons (Secondary) */
     div.stButton > button,
     div[data-testid="stFormSubmitButton"] > button,
     button[data-testid="stPopoverButton"] {{
@@ -109,6 +111,7 @@ def apply_theme(theme_name):
         border: 1px solid {theme["headerColor"]} !important;
     }}
 
+    /* Popover Internals */
     button[data-testid="stPopoverButton"] div,
     button[data-testid="stPopoverButton"] p,
     button[data-testid="stPopoverButton"] span,
@@ -116,6 +119,26 @@ def apply_theme(theme_name):
         color: {theme["buttonTextColor"]} !important;
         fill: {theme["buttonTextColor"]} !important;
     }}
+
+    /* --- SPECIAL: PRIMARY BUTTONS (DELETE) --- */
+    /* Forces RED background and WHITE text/icon for any Primary button (like Delete) */
+    div.stButton > button[kind="primary"] {{
+        background-color: #EF4444 !important; /* Bright Red */
+        color: #FFFFFF !important;            /* White Text */
+        border: 1px solid #B91C1C !important;
+    }}
+    div.stButton > button[kind="primary"]:hover {{
+        background-color: #DC2626 !important; /* Darker Red on Hover */
+        box-shadow: 0 0 8px #EF4444 !important;
+        color: #FFFFFF !important;
+    }}
+    /* Ensure the Icon inside inherits the white color */
+    div.stButton > button[kind="primary"] span[data-testid="stIconMaterial"],
+    div.stButton > button[kind="primary"] svg {{
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+    }}
+
 
     /* --- 5. THE IMPORT BACKUP BOX (FILE UPLOADER) --- */
     [data-testid="stFileUploader"] section {{
@@ -218,10 +241,6 @@ def apply_theme(theme_name):
 
 # --- NON-NATIVE COMPONENT: JS COPY BUTTON ---
 def render_copy_button(text, theme_name="Calango (Default)"):
-    """
-    Renders a JavaScript-powered Copy Button using iframe injection.
-    Inherits colors from the current theme.
-    """
     if theme_name not in THEMES:
         theme_name = "Calango (Default)"
 
@@ -229,7 +248,6 @@ def render_copy_button(text, theme_name="Calango (Default)"):
     primary = theme["primaryColor"]
     btn_text = theme["buttonTextColor"]
 
-    # Securely escape the text for JavaScript injection
     safe_text = json.dumps(text)
 
     html_code = f"""
@@ -281,5 +299,4 @@ def render_copy_button(text, theme_name="Calango (Default)"):
     </body>
     </html>
     """
-    # Render invisible iframe containing the button
     components.html(html_code, height=45)
