@@ -68,22 +68,28 @@ spell-check: ## Spell check project.
 	@echo "$(GREEN)*** Spell check complete! ***$(NC)"
 
 # --- Testing ---
+# ... existing variables ...
 
-test: ## Run unit tests (excludes integration tests).
+test: ## Run unit tests only (excludes integration and e2e)
 	@echo "$(GREEN)>>> Running unit tests...$(NC)"
-	@$(UV) run pytest -m "not integration"
+	@$(UV) run pytest -m "not integration and not e2e"
 
-test-integration: ## Run integration tests only.
+test-integration: ## Run integration tests only
 	@echo "$(GREEN)>>> Running integration tests...$(NC)"
 	@$(UV) run pytest -m "integration"
 
-test-all: ## Run ALL tests (unit + integration).
+test-e2e: ## Run E2E tests only
+	@echo "$(GREEN)>>> Running E2E tests...$(NC)"
+	@$(UV) run pytest -m "e2e"
+
+test-all: ## Run everything
 	@echo "$(GREEN)>>> Running all tests...$(NC)"
 	@$(UV) run pytest
 
 coverage: ## Run tests and generate coverage report.
 	@echo "$(GREEN)>>> Running tests with coverage...$(NC)"
 	@$(UV) run pytest --cov=$(SRC_DIR) --cov-report=term-missing --cov-report=html
+
 
 # --- CI/CD Check ---
 
