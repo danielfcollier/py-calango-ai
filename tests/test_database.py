@@ -1,18 +1,28 @@
-# src/calango/database.py
-
 import os
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+from dotenv import load_dotenv
+from pydantic import BaseModel, ValidationError
 from tinydb import Query, TinyDB
 
 APP_NAME = ".calango"
-
-BASE_DIR = Path(os.getenv("CALANGO_HOME", Path.home()))
-APP_DIR = BASE_DIR / APP_NAME
+APP_DIR = Path.home() / APP_NAME
 APP_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = Path(APP_DIR, "calango.json")
+
+
+# --- Data Models (Pydantic) ---
+class ProviderModel(BaseModel):
+    api_key: str
+    models: list[str]
+
+
+class ConfigFileModel(BaseModel):
+    providers: dict[str, ProviderModel]
 
 
 class ConfigManager:
@@ -31,26 +41,89 @@ class ConfigManager:
         self.config_table.upsert({"name": name, "api_key": api_key, "models": models}, Provider.name == name)
 
     def load_theme_setting(self):
+        """Get current theme preference"""
         Setting = Query()
         result = self.settings_table.get(Setting.section == "appearance")
         return result.get("theme", "default") if result else "default"
 
     def save_theme_setting(self, theme_name: str):
         Setting = Query()
-        self.settings_table.upsert({"section": "appearance", "theme": theme_name}, Setting.section == "appearance")
+        self.settings_table.upsert(
+            {"section": "appearance", "theme": theme_name},
+            Setting.section == "appearance",
+        )
+
+    def _expand_env_vars(self, value):
+        """
+        Helper to replace ${VAR} or $VAR with the value from os.environ.
+        """
+        if not isinstance(value, str):
+            return value
+
+        path_matcher = re.compile(r"\$\{([^}^{]+)\}|\$([a-zA-Z_][a-zA-Z0-9_]*)")
+
+        def replace_match(match):
+            var_name = match.group(1) or match.group(2)
+            return os.getenv(var_name, "")
+
+        return path_matcher.sub(replace_match, value)
+
+    def import_yaml(self, yaml_path: str):
+        if not os.path.exists(yaml_path):
+            return False
+
+        load_dotenv()
+
+        with open(yaml_path) as f:
+            try:
+                raw_data = yaml.safe_load(f)
+                if not raw_data:
+                    return False
+            except yaml.YAMLError:
+                return False
+
+        # --- VALIDATION STEP ---
+        try:
+            validated_config = ConfigFileModel(**raw_data)
+        except ValidationError as e:
+            print(f"❌ Invalid Config Format: {e}")
+            return False
+
+        # If valid, proceed to save
+        self.config_table.truncate()
+
+        # Iterate over validated Pydantic objects
+        for name, provider_data in validated_config.providers.items():
+            # Expand env vars in the API key
+            raw_key = provider_data.api_key
+            final_key = self._expand_env_vars(raw_key)
+
+            self.upsert_provider(name, final_key, provider_data.models)
+
+        return True
 
 
 class PersonaManager:
+    """Manages System Prompts (Personas)"""
+
     def __init__(self):
         self.db = TinyDB(DB_PATH)
         self.personas_table = self.db.table("personas")
+
         if not self.personas_table.all():
             self._seed_defaults()
 
     def _seed_defaults(self):
         defaults = [
             {"name": "Calango (Default)", "prompt": "You are a helpful AI assistant."},
-            {"name": "Python Expert", "prompt": "You are a Senior Python Engineer..."},
+            {
+                "name": "Python Expert",
+                "prompt": "You are a Senior Python Engineer. Be concise, use type hints, and focus on clean, performant code.",  # noqa
+            },
+            {
+                "name": "Creative Writer",
+                "prompt": "You are a visionary writer. Use evocative language, vivid imagery, and varied sentence structures.",  # noqa
+            },
         ]
         for p in defaults:
             self.create_persona(p["name"], p["prompt"])
@@ -93,40 +166,7 @@ class SessionManager:
 
     def get_messages(self, session_id):
         History = Query()
-        interactions = self.history_table.search(History.session_id == session_id)
-        interactions.sort(key=lambda x: x.get("timestamp", ""))
-
-        formatted_messages = []
-        for ix in interactions:
-            timestamp = ix.get("timestamp", "")
-            model_info = ix.get("model", "Unknown")
-            provider_info = ix.get("provider", "Unknown")  # Metadata: Retrieve provider
-            persona_info = ix.get("persona") or "Default"
-
-            if ix.get("messages"):
-                user_msg = ix["messages"][-1]
-                formatted_messages.append(
-                    {
-                        "role": "user",
-                        "content": user_msg["content"],
-                        "time": timestamp,
-                        "model": model_info,
-                        "provider": provider_info,  # Added provider
-                        "persona": persona_info,
-                    }
-                )
-
-            formatted_messages.append(
-                {
-                    "role": "assistant",
-                    "content": ix.get("reply", ""),
-                    "time": timestamp,
-                    "model": model_info,
-                    "provider": provider_info,  # Added provider
-                    "persona": persona_info,
-                }
-            )
-        return formatted_messages
+        return self.history_table.search(History.session_id == session_id)
 
     def delete_session(self, session_id):
         Session = Query()
@@ -140,25 +180,31 @@ class InteractionManager:
         self.db = TinyDB(DB_PATH)
         self.history_table = self.db.table("history")
 
-    def log_interaction(self, provider, model, messages, response, session_id, persona, cost=0.0):
+    def log_interaction(self, provider, model, messages, response, session_id, cost=0.0):
         try:
             input_tokens = response.usage.prompt_tokens
             output_tokens = response.usage.completion_tokens
+            total_tokens = response.usage.total_tokens
             reply_content = response.choices[0].message.content
         except Exception:
-            input_tokens = output_tokens = 0
+            input_tokens = 0
+            output_tokens = 0
+            total_tokens = 0
             reply_content = ""
 
         record = {
             "id": str(uuid.uuid4()),
             "session_id": session_id,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # Date: yyyy-mm-dd HH:mm:ss
+            "timestamp": datetime.now().isoformat(),
             "provider": provider,
             "model": model,
-            "persona": persona,
             "messages": messages,
             "reply": reply_content,
-            "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
+            "usage": {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": total_tokens,
+            },
             "cost_usd": cost,
         }
         self.history_table.insert(record)
