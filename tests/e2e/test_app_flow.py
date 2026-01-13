@@ -7,20 +7,19 @@ pytestmark = pytest.mark.e2e
 
 # Constants
 BASE_URL = "http://localhost:8501"
-# tests/e2e/test_app_flow.py
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_db_env(tmp_path_factory):
-    """Redirects the database to a temporary directory and seeds a provider."""
+    """
+    Priority: 
+    1. Use existing CALANGO_HOME (set in CI)
+    2. Fallback to a temporary directory (for local testing)
+    """
+    if "CALANGO_HOME" in os.environ:
+        return os.environ["CALANGO_HOME"]
+        
     tmp_dir = tmp_path_factory.mktemp("calango_test_home")
     os.environ["CALANGO_HOME"] = str(tmp_dir)
-    
-    # SEED: Ensure the UI has a provider to select
-    from calango.database import ConfigManager
-    cm = ConfigManager()
-    # Name it 'openai' so OPENAI_API_BASE env var is picked up by litellm
-    cm.upsert_provider("openai", "sk-mock", ["gpt-4o-mini"])
-    
     return tmp_dir
 
 @pytest.fixture(scope="function", autouse=True)
@@ -69,7 +68,7 @@ def test_rinha_flow(page: Page):
         # Default is 2 in code, but if it was 4, move left to ensure 2 fighters
         page.keyboard.press("ArrowLeft")
         page.keyboard.press("ArrowLeft")
-        page.wait_for_timeout(500) 
+        page.wait_for_timeout(1000)
 
     # 4. Send challenge
     prompt_text = "Compare Python vs Javascript in one sentence."
@@ -85,6 +84,7 @@ def test_rinha_flow(page: Page):
     expect(page.get_by_test_id("stChatMessage").filter(has_text=prompt_text)).to_be_visible()
 
     # 6. Verify token stats (rendered as st.success/stNotification)
-    # We expect 2 notifications (one stats box for each fighter)
-    # Use a long timeout to wait for the LLMs to finish streaming
-    expect(page.get_by_test_id("stNotification")).to_have_count(2, timeout=45000)
+    # It only renders AFTER the LLM stream is finished.
+    notifications = page.get_by_test_id("stNotification")
+    expect(notifications.first).to_be_visible(timeout=45000)
+    expect(notifications).to_have_count(2, timeout=10000)

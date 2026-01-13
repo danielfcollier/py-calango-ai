@@ -54,21 +54,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv python install 3.12
+      - name: Set up Python
+        run: uv python install 3.12
+
       - name: Install Dependencies
         run: |
           uv sync --group dev
+          # Explicitly install flask into the environment for the mock server
           uv pip install flask
-      - name: Install Playwright
+
+      - name: Install Playwright Browsers
         run: uv run playwright install --with-deps chromium
-      - name: Run E2E Flow
+
+      - name: Run E2E Tests
         run: |
           mkdir -p $CALANGO_HOME
-          # Start Mock SSE Server
-          python -c "from flask import Flask, Response; app=Flask(__name__); @app.route('/chat/completions', methods=['POST']) def mock(): return Response('data: {\"choices\": [{\"delta\": {\"content\": \"Mock response\"}}], \"usage\": {\"prompt_tokens\": 5, \"completion_tokens\": 5}}\n\ndata: [DONE]\n\n', mimetype='text/event-stream'); app.run(port=8080)" &
-          # Start App
+          
+          # 1. Seed the database using uv run to ensure path/module context
+          uv run python -c "from calango.database import ConfigManager, PersonaManager; cm = ConfigManager(); cm.upsert_provider('openai', 'sk-mock', ['gpt-4o-mini']); PersonaManager()"
+          
+          # 2. Start Mock SSE Server using 'uv run' to access the installed Flask
+          uv run python -c "from flask import Flask, Response; app=Flask(__name__); app.add_url_rule('/chat/completions', 'mock', lambda: Response('data: {\"choices\": [{\"delta\": {\"content\": \"Mock response\"}}], \"usage\": {\"prompt_tokens\": 5, \"completion_tokens\": 5}}\n\ndata: [DONE]\n\n', mimetype='text/event-stream'), methods=['POST']); app.run(port=8080)" &
+          
+          # 3. Start App in background
           uv run streamlit run src/app.py --server.headless true &
+          
+          # 4. Wait for both servers to be ready
           sleep 15
+          
+          # 5. Run tests
           make test-e2e
 
   security:
