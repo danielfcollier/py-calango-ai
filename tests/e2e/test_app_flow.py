@@ -60,7 +60,11 @@ def test_rinha_flow(page: Page):
     
     # 2. Clear previous history to ensure a predictable message count
     page.get_by_role("button", name="Limpar Rinha").click()
-    
+
+    # Wait for page to stabilize after rerun
+    expect(page.get_by_text("🥊 A Rinha (The Arena)")).to_be_visible()
+    page.wait_for_timeout(1000)
+
     # 3. Adjust Slider (Label is 'Lutadores' in src/ui/rinha.py line 80)
     slider = page.get_by_label("Lutadores")
     if slider.is_visible():
