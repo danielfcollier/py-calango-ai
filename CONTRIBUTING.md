@@ -72,15 +72,15 @@ The output will be in the `dist/` folder.
 
 * **`src/app.py`**: The main entry point and navigation logic.
 * **`src/calango/`**: Core logic.
-* `core.py`: LLM interaction logic (LiteLLM wrapper).
-* `database.py`: TinyDB handling (History, Configs, Personas).
-* `themes.py`: The color palettes and CSS injection.
+  * `core.py`: LLM interaction logic (LiteLLM wrapper).
+  * `database.py`: TinyDB handling (History, Configs, Personas).
+  * `themes.py`: The color palettes and CSS injection.
 
 * **`src/ui/`**: Streamlit pages.
-* `home.py`: The main Chat interface.
-* `rinha.py`: The "Danger Room" (Model Comparison).
-* `dashboard.py`: "A Cuca" (Analytics).
-* `settings.py`: "A Toca" (Config & Personas).
+  * `home.py`: The main Chat interface.
+  * `rinha.py`: The "Danger Room" (Model Comparison).
+  * `dashboard.py`: "A Cuca" (Analytics).
+  * `settings.py`: "A Toca" (Config & Personas).
 
 ## 🎨 How to Add a New Theme
 

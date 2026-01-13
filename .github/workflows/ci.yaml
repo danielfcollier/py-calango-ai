@@ -1,4 +1,4 @@
-# .github/workflows/ci.yml
+# .github/workflows/ci.yaml
 name: CI & Security
 
 on:
@@ -13,43 +13,84 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v5
       - name: Set up Python
         run: uv python install 3.12
-
       - name: Install Dependencies
         run: uv sync --group dev
-
       - name: Check Formatting & Linting
         run: make check
 
-  test:
+  unit-tests:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
     needs: quality
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev
+      - name: Run Unit Tests
+        run: make test
+
+  integration-tests:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev
+      - name: Run Integration Tests
+        run: make test-integration
+
+  e2e-tests:
+    name: 🎭 E2E Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    env:
+      CALANGO_HOME: ${{ github.workspace }}/test_run
+      OPENAI_API_BASE: "http://localhost:8080" 
+      OPENAI_API_KEY: "sk-mock"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
       - name: Set up Python
         run: uv python install 3.12
 
       - name: Install Dependencies
-        run: uv sync --group dev
+        run: |
+          uv sync --group dev
+          # Explicitly install flask into the environment for the mock server
+          uv pip install flask
 
-      - name: Run Pytest
-        run: make test
+      - name: Install Playwright Browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        run: |
+          mkdir -p $CALANGO_HOME
+          
+          # 1. Seed the database using uv run to ensure path/module context
+          uv run python -c "from calango.database import ConfigManager, PersonaManager; cm = ConfigManager(); cm.upsert_provider('openai', 'sk-mock', ['gpt-4o-mini']); PersonaManager()"
+          
+          # 2. Start Mock SSE Server using 'uv run' to access the installed Flask
+          uv run python -c "from flask import Flask, Response; import time; app=Flask(__name__); app.add_url_rule('/chat/completions', 'mock', lambda: (time.sleep(0.5), Response('data: {\"choices\": [{\"delta\": {\"content\": \"Mock response\"}}], \"usage\": {\"prompt_tokens\": 5, \"completion_tokens\": 5}}\n\ndata: [DONE]\n\n', mimetype='text/event-stream'))[1], methods=['POST']); app.run(port=8080)" &          
+          
+          # 3. Start App in background
+          uv run streamlit run src/app.py --server.headless true &
+          
+          # 4. Wait for both servers to be ready
+          sleep 15
+          
+          # 5. Run tests
+          make test-e2e
 
   security:
     name: 🛡️ CVE Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install Dependencies
-        run: uv sync --group dev
-
-      - name: Run pip-audit (CVE Scan)
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev
+      - name: Run Security Audit
         run: make security

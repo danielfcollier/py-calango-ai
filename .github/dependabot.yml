@@ -7,9 +7,9 @@ updates:
     schedule:
       interval: "daily"
     groups:
-       python-dependencies:
-         patterns:
-           - "*"
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Maintain GitHub Actions dependencies
   - package-ecosystem: "github-actions"
