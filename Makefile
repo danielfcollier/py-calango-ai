@@ -28,11 +28,13 @@ setup-ollama: ## Run Ollama inside a Docker container (Port 11434)
 	
 	@echo "⏳ Waiting for Ollama to boot..."
 	@sleep 3
-	
-	@echo "📥 Pulling default model (Llama 3)..."
+
+	@echo "📥 Pulling models (llama3, mistral, gemma2)..."
 	@docker exec calango-ollama ollama pull llama3
-	
-	@echo "✅ Ollama is ready at http://localhost:11434"
+	@docker exec calango-ollama ollama pull mistral
+	@docker exec calango-ollama ollama pull gemma2
+
+	@echo "✅ Ollama is ready at http://localhost:11434 with 3 models"
 
 install: ## Install dependencies using uv
 	@echo "$(GREEN)>>> Installing dependencies...$(NC)"
