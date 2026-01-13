@@ -1,5 +1,3 @@
-# src/calango/themes.py
-
 import json
 
 import streamlit.components.v1 as components
@@ -197,6 +195,18 @@ def apply_theme(theme_name):
         background-color: {theme["backgroundColor"]} !important;
         color: {theme["textColor"]} !important;
         border: 1px solid {theme["primaryColor"]} !important;
+    }}
+
+    /* Placeholder text with better contrast */
+    .stTextInput input::placeholder,
+    .stTextArea textarea::placeholder {{
+        color: {theme["textColor"]} !important;
+        opacity: 0.7 !important;
+    }}
+
+    .stTextInput input:focus::placeholder,
+    .stTextArea textarea:focus::placeholder {{
+        opacity: 0.5 !important;
     }}
 
     div[data-baseweb="popover"], div[data-baseweb="menu"] {{

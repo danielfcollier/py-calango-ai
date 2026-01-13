@@ -1,11 +1,9 @@
-# src/ui/home.py
-
 from datetime import datetime
 
 import streamlit as st
 from calango.core import CalangoEngine
 from calango.database import ConfigManager, PersonaManager, SessionManager
-from calango.services.chat_service import ChatService  # <--- NEW Service Import
+from calango.services.chat_service import ChatService
 from calango.themes import render_copy_button
 
 # Inicialização da Lógica
@@ -15,7 +13,7 @@ persona_mgr = PersonaManager()
 config_db = ConfigManager()
 
 # Instantiate ChatService
-chat_service = ChatService(engine, session_mgr)  # <--- Service Injection
+chat_service = ChatService(engine, session_mgr)
 
 # Get theme for JS buttons
 current_theme_name = config_db.load_theme_setting()
@@ -145,9 +143,8 @@ if prompt := st.chat_input("Pergunte ao Calango..."):
 
     # Session ID might have been generated if it was None
     if st.session_state.session_id is None:
-        # We fetch the latest session ID created by the service
-        latest_session = session_mgr.get_all_sessions()[0]
-        st.session_state.session_id = latest_session["id"]
+        # Retrieve the session ID from the service
+        st.session_state.session_id = chat_service.get_current_session_id()
 
     st.session_state.messages.append(
         {

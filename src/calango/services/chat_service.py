@@ -13,10 +13,15 @@ class ChatService:
         """
         self.engine = engine
         self.session_manager = session_manager
+        self.current_session_id = None
 
     def get_messages(self, session_id):
         """Wraps session manager logic to retrieve history."""
         return self.session_manager.get_messages(session_id)
+
+    def get_current_session_id(self):
+        """Returns the session ID from the last send_message call."""
+        return self.current_session_id
 
     def calculate_usage(self, model_name, prompt_text, response_text):
         """
@@ -59,6 +64,9 @@ class ChatService:
             session_id = self.session_manager.create_session(title="Nova Conversa")
             is_new = True
 
+        # Store the session_id so it can be retrieved by the caller
+        self.current_session_id = session_id
+
         # Prepare chat history excluding system messages to avoid duplication
         chat_history = [m for m in messages if m.get("role") != "system"]
         chat_history.insert(0, {"role": "system", "content": system_prompt})
@@ -74,11 +82,23 @@ class ChatService:
         )
 
         full_content = ""
+        error_occurred = False
         for chunk in stream:
             full_content += chunk
             yield chunk
+            # Detect if an error occurred during streaming
+            if "Error:" in chunk:
+                error_occurred = True
 
         # Post-processing: Calculate and Update Token Usage
+        # Skip if an error occurred (no API key, quota exceeded, etc.)
+        if error_occurred or full_content.startswith("Error:"):
+            return
+
+        # Skip cost calculation for local models (Ollama)
+        if provider.lower() == "ollama":
+            return
+
         try:
             full_input_text = system_prompt + "\n" + "\n".join([m["content"] for m in chat_history])
             usage_stats = self.calculate_usage(model, full_input_text, full_content)
