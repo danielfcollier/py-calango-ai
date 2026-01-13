@@ -74,7 +74,7 @@ jobs:
           uv run python -c "from calango.database import ConfigManager, PersonaManager; cm = ConfigManager(); cm.upsert_provider('openai', 'sk-mock', ['gpt-4o-mini']); PersonaManager()"
           
           # 2. Start Mock SSE Server using 'uv run' to access the installed Flask
-          uv run python -c "from flask import Flask, Response; app=Flask(__name__); app.add_url_rule('/chat/completions', 'mock', lambda: Response('data: {\"choices\": [{\"delta\": {\"content\": \"Mock response\"}}], \"usage\": {\"prompt_tokens\": 5, \"completion_tokens\": 5}}\n\ndata: [DONE]\n\n', mimetype='text/event-stream'), methods=['POST']); app.run(port=8080)" &
+          uv run python -c "from flask import Flask, Response; import time; app=Flask(__name__); app.add_url_rule('/chat/completions', 'mock', lambda: (time.sleep(0.5), Response('data: {\"choices\": [{\"delta\": {\"content\": \"Mock response\"}}], \"usage\": {\"prompt_tokens\": 5, \"completion_tokens\": 5}}\n\ndata: [DONE]\n\n', mimetype='text/event-stream'))[1], methods=['POST']); app.run(port=8080)" &          
           
           # 3. Start App in background
           uv run streamlit run src/app.py --server.headless true &

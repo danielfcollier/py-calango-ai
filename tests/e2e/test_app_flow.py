@@ -68,7 +68,7 @@ def test_rinha_flow(page: Page):
         # Default is 2 in code, but if it was 4, move left to ensure 2 fighters
         page.keyboard.press("ArrowLeft")
         page.keyboard.press("ArrowLeft")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(2000)
 
     # 4. Send challenge
     prompt_text = "Compare Python vs Javascript in one sentence."
@@ -81,7 +81,8 @@ def test_rinha_flow(page: Page):
     expect(page.get_by_test_id("stChatMessage")).to_have_count(3, timeout=45000)
     
     # Check that the model responses were generated (checks for text presence)
-    expect(page.get_by_test_id("stChatMessage").filter(has_text=prompt_text)).to_be_visible()
+    # This helps synchronize with the mock server response
+    expect(page.get_by_test_id("stChatMessage").filter(has_text="Mock response")).to_have_count(2, timeout=30000)
 
     # 6. Verify token stats (rendered as st.success/stNotification)
     # It only renders AFTER the LLM stream is finished.
