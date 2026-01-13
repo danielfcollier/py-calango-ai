@@ -81,7 +81,9 @@ with st.expander("⚙️ Configuração do Combate", expanded=True):
     with col_cfg3:
         st.write("")
         if st.button("Limpar Rinha", icon=":material/delete_sweep:", type="primary"):
-            rinha_db.truncate()
+            # Only clear battle history, preserve fighter configuration
+            rounds_table = rinha_db.table("_default")
+            rounds_table.truncate()
             st.session_state.rinha_history = []
             st.rerun()
 
