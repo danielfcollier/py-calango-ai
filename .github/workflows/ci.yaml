@@ -28,11 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Set up Python
-        run: uv python install 3.12
-      - name: Install Dependencies
-        run: uv sync --group dev
-      - name: Run Pytest (Unit)
+      - run: uv sync --group dev
+      - name: Run Unit Tests
         run: make test
 
   integration-tests:
@@ -42,15 +39,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Set up Python
-        run: uv python install 3.12
-      - name: Install Dependencies
-        run: uv sync --group dev
-      - name: Run Pytest (Integration)
+      - run: uv sync --group dev
+      - name: Run Integration Tests
         run: make test-integration
-
-        # .github/workflows/ci.yaml
-
 
   e2e-tests:
     name: 🎭 E2E Tests
@@ -63,29 +54,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      
-      - name: Set up Python
-        run: uv python install 3.12
-        
+      - run: uv python install 3.12
       - name: Install Dependencies
         run: |
           uv sync --group dev
           uv pip install flask
-        
-      - name: Install Playwright Browsers
+      - name: Install Playwright
         run: uv run playwright install --with-deps chromium
-        
-      - name: Run E2E Tests
+      - name: Run E2E Flow
         run: |
           mkdir -p $CALANGO_HOME
-          
-          # 1. Start Mock Server
+          # Start Mock SSE Server
           python -c "from flask import Flask, Response; app=Flask(__name__); @app.route('/chat/completions', methods=['POST']) def mock(): return Response('data: {\"choices\": [{\"delta\": {\"content\": \"Mock response\"}}], \"usage\": {\"prompt_tokens\": 5, \"completion_tokens\": 5}}\n\ndata: [DONE]\n\n', mimetype='text/event-stream'); app.run(port=8080)" &
-          
-          # 2. Start Streamlit in background
+          # Start App
           uv run streamlit run src/app.py --server.headless true &
-          
-          # 3. Wait for boot and run tests
           sleep 15
           make test-e2e
 
@@ -95,9 +77,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Set up Python
-        run: uv python install 3.12
-      - name: Install Dependencies
-        run: uv sync --group dev
-      - name: Run pip-audit (CVE Scan)
+      - run: uv sync --group dev
+      - name: Run Security Audit
         run: make security
