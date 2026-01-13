@@ -61,8 +61,8 @@ def test_rinha_flow(page: Page):
     # 2. Clear previous history to ensure a predictable message count
     page.get_by_role("button", name="Limpar Rinha").click()
     
-    # 3. Adjust Slider (Matches the label in src/ui/rinha.py: 'Número de Lutadores')
-    slider = page.get_by_label("Número de Lutadores")
+    # 3. Adjust Slider (Label is 'Lutadores' in src/ui/rinha.py line 80)
+    slider = page.get_by_label("Lutadores")
     if slider.is_visible():
         slider.click()  # Focus the slider
         # Default is 2 in code, but if it was 4, move left to ensure 2 fighters
@@ -84,8 +84,10 @@ def test_rinha_flow(page: Page):
     # This helps synchronize with the mock server response
     expect(page.get_by_test_id("stChatMessage").filter(has_text="Mock response")).to_have_count(2, timeout=30000)
 
-    # 6. Verify token stats (rendered as st.success/stNotification)
-    # It only renders AFTER the LLM stream is finished.
-    notifications = page.get_by_test_id("stNotification")
-    expect(notifications.first).to_be_visible(timeout=45000)
-    expect(notifications).to_have_count(2, timeout=10000)
+    # 6. Verify token stats (rendered inline in chat messages)
+    # The stats format is "💰 $X.XXXXX | ⚡ X tok" from arena_service.py line 87
+    # Wait for at least one stats message to appear (indicates battle completed)
+    expect(page.locator("text=/💰.*tok/").first).to_be_visible(timeout=45000)
+
+    # Verify both fighters' stats are present
+    expect(page.locator("text=/💰.*tok/")).to_have_count(2, timeout=10000)
