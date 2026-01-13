@@ -1,5 +1,3 @@
-# src/ui/dashboard.py
-
 import pandas as pd
 import plotly.express as px
 

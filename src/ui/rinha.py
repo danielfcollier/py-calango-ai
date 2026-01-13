@@ -1,11 +1,9 @@
-# src/ui/rinha.py
-
 from tinydb import TinyDB
 
 import streamlit as st
 from calango.core import CalangoEngine
 from calango.database import APP_DIR, ConfigManager, InteractionManager, PersonaManager
-from calango.services.arena_service import ArenaService  # <--- NEW Service Import
+from calango.services.arena_service import ArenaService
 from calango.themes import render_copy_button
 
 # --- Initialize Engines ---
@@ -20,7 +18,7 @@ rinha_db = TinyDB(rinha_db_path)
 config_table = rinha_db.table("config")
 
 # Instantiate ArenaService
-arena_service = ArenaService(engine, db, rinha_db)  # <--- Service Injection
+arena_service = ArenaService(engine, db, rinha_db)
 
 # Get theme for JS buttons
 current_theme_name = config_db.load_theme_setting()
@@ -32,9 +30,6 @@ def load_config():
     if not cfg:
         return 2, {}
     return cfg.get("fighter_count", 2), cfg.get("fighters", {})
-
-
-# src/ui/rinha.py
 
 
 def save_fighter_config():
@@ -94,11 +89,16 @@ st.divider()
 
 # --- 3. Contenders Selection ---
 contenders = []
+providers = engine.get_configured_providers()
+
+if not providers:
+    st.warning("⚠️ Nenhum provedor configurado! Por favor, configure ao menos um provedor na página de Configurações.")
+    st.stop()
+
 cols = st.columns(num_contenders)
 for i, col in enumerate(cols):
     with col:
         st.subheader(f"Lutador #{i + 1}")
-        providers = engine.get_configured_providers()
         saved_p = saved_fighters.get(str(i), {}).get("provider")
         p_idx = providers.index(saved_p) if saved_p in providers else (i % len(providers))
         prov = st.selectbox("Provedor", providers, index=p_idx, key=f"p_{i}", on_change=save_fighter_config)

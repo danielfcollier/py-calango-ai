@@ -1,5 +1,3 @@
-# src/app.py
-
 import streamlit as st
 from calango.database import ConfigManager
 from calango.themes import apply_theme

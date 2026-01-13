@@ -69,7 +69,15 @@ class ArenaService:
 
                 for chunk in gen:
                     chunk_str = str(chunk) if chunk is not None else ""
-                    # Content Inspection for Leaked JSON/Quota Errors
+
+                    # Detect error messages early (before adding to response)
+                    # All errors from core.py start with "Error:"
+                    if chunk_str.startswith("Error:"):
+                        raise Exception(chunk_str.replace("Error: ", ""))
+
+                    full_response += chunk_str
+
+                    # Additional detection for quota errors in stream content
                     chunk_lower = chunk_str.lower()
                     is_quota_error = (
                         ("error" in chunk_lower and "429" in chunk_lower)
@@ -80,35 +88,54 @@ class ArenaService:
                     if is_quota_error:
                         raise Exception("Quota Exceeded (Detected in Stream)")
 
-                    full_response += chunk_str
-
                 # Finalize stats for this fighter
-                usage_stats = self.calculate_usage(contender["model"], f"{system_prompt}\n{prompt}", full_response)
-                stats_text = f"💰 ${usage_stats['cost_usd']:.5f} | ⚡ {usage_stats['total_tokens']} tok"
+                # Skip cost calculation for local models (Ollama)
+                if contender["provider"].lower() == "ollama":
+                    # For local models, just show it's local - no cost or token count needed
+                    stats_text = "🏠 Local"
+                else:
+                    usage_stats = self.calculate_usage(contender["model"], f"{system_prompt}\n{prompt}", full_response)
+                    stats_text = f"💰 ${usage_stats['cost_usd']:.5f} | ⚡ {usage_stats['total_tokens']} tok"
 
-                # Silently update interaction history if record exists
-                try:
-                    Log = Query()
-                    records = self.interaction_manager.history_table.search(
-                        (Log.session_id == "rinha-mode") & (Log.model == contender["model"])
-                    )
-                    if records:
-                        self.interaction_manager.history_table.update(
-                            {
-                                "usage": usage_stats,
-                                "cost_usd": usage_stats["cost_usd"],
-                                "total_tokens": usage_stats["total_tokens"],
-                            },
-                            doc_ids=[records[-1].doc_id],
+                    # Silently update interaction history if record exists (only for paid models)
+                    try:
+                        Log = Query()
+                        records = self.interaction_manager.history_table.search(
+                            (Log.session_id == "rinha-mode") & (Log.model == contender["model"])
                         )
-                except Exception:
-                    pass
+                        if records:
+                            self.interaction_manager.history_table.update(
+                                {
+                                    "usage": usage_stats,
+                                    "cost_usd": usage_stats["cost_usd"],
+                                    "total_tokens": usage_stats["total_tokens"],
+                                },
+                                doc_ids=[records[-1].doc_id],
+                            )
+                    except Exception:
+                        pass
 
             except Exception as e:
                 error_occurred = True
                 err_str = str(e).lower()
+
+                # Check for specific error types
                 if any(k in err_str for k in ["quota", "429", "rate limit", "resource_exhausted"]):
                     full_response = f"**Cota Excedida** ({contender['model']})\n\nO limite gratuito foi atingido."
+                elif "model" in err_str and "not found" in err_str and contender["provider"].lower() == "ollama":
+                    # Ollama model not found - provide helpful instructions
+                    full_response = (
+                        f"**Modelo Local Não Encontrado** ({contender['model']})\n\n"
+                        f"O modelo `{contender['model']}` não está instalado no Ollama.\n"
+                        f"```"
+                    )
+                elif "no api key found" in err_str:
+                    provider_upper = contender["provider"].upper()
+                    full_response = (
+                        f"**API Key Não Configurada** ({contender['model']})\n\n"
+                        f"Configure a variável de ambiente `{provider_upper}_API_KEY` ou "
+                        f"adicione a chave na página de Configurações."
+                    )
                 else:
                     full_response = f"**Erro**\n\n{str(e)}"
 

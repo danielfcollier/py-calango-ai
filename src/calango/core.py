@@ -1,5 +1,3 @@
-# src/calango/core.py
-
 import os
 
 from dotenv import load_dotenv
@@ -38,46 +36,78 @@ class CalangoEngine:
             if provider_data:
                 api_key = provider_data.get("api_key")
 
-        if not api_key:
-            yield f"Error: No API key found for {provider_name}."
-            return
-
         api_messages = [
             {"role": m["role"], "content": m["content"]} for m in messages if "role" in m and "content" in m
         ]
 
         full_model_string = f"{prefix}/{model_name}"
 
+        full_content = ""
+
         try:
-            stream = completion(model=full_model_string, messages=api_messages, api_key=api_key, stream=True)
-            full_content = ""
-            for chunk in stream:
-                content = chunk.choices[0].delta.content or ""
-                if content:
-                    full_content += content
-                    yield content
+            # Check for API key and handle as an error (so it gets logged)
+            if not api_key:
+                full_content = f"Error: No API key found for {provider_name}."
+                yield full_content
+            else:
+                stream = completion(model=full_model_string, messages=api_messages, api_key=api_key, stream=True)
+                for chunk in stream:
+                    content = chunk.choices[0].delta.content or ""
+                    if content:
+                        full_content += content
+                        yield content
 
-            # Log interaction with Persona Name
-            class MockResponse:
-                def __init__(self, c, m):
-                    self.usage = type("obj", (object,), {"prompt_tokens": 0, "completion_tokens": 0})
-                    self.choices = [type("obj", (object,), {"message": type("obj", (object,), {"content": c})})]
-                    self.model = m
-
-            self.memory.log_interaction(
-                provider=provider_name,
-                model=model_name,
-                messages=messages,
-                response=MockResponse(full_content, model_name),
-                session_id=session_id,
-                persona=persona_name,  # Metadata: Persona passed here
-                cost=0.0,
-            )
-
-            if is_new_session and len(messages) > 0:
-                first_prompt = messages[-1]["content"]
-                new_title = (first_prompt[:30] + "..") if len(first_prompt) > 30 else first_prompt
-                self.sessions.update_session_title(session_id, new_title)
+                if is_new_session and len(messages) > 0:
+                    first_prompt = messages[-1]["content"]
+                    new_title = (first_prompt[:30] + "..") if len(first_prompt) > 30 else first_prompt
+                    self.sessions.update_session_title(session_id, new_title)
 
         except Exception as e:
-            yield f"Error: {str(e)}"
+            err_str = str(e).lower()
+
+            # Provide user-friendly error messages
+            if "model" in err_str and "not found" in err_str and provider_name.lower() == "ollama":
+                error_msg = f"Error: Modelo local '{model_name}' não encontrado.\n"
+            elif any(k in err_str for k in ["quota", "429", "rate limit"]):
+                error_msg = f"Error: Cota excedida. Limite de uso atingido para {provider_name}/{model_name}."
+            elif "connection" in err_str.lower() and provider_name.lower() == "ollama":
+                error_msg = (
+                    "Error: Não foi possível conectar ao Ollama.\n\nCertifique-se de que o Ollama está rodando:\n"
+                )
+            else:
+                error_msg = f"Error: {str(e)}"
+
+            full_content = error_msg
+            yield error_msg
+
+        finally:
+            # Always log interaction, even on errors
+            class MockUsage:
+                def __init__(self):
+                    self.prompt_tokens = 0
+                    self.completion_tokens = 0
+
+            class MockMessage:
+                def __init__(self, content):
+                    self.content = content
+
+            class MockChoice:
+                def __init__(self, content):
+                    self.message = MockMessage(content)
+
+            class MockResponse:
+                def __init__(self, content, model):
+                    self.usage = MockUsage()
+                    self.choices = [MockChoice(content)]
+                    self.model = model
+
+            if full_content:  # Only log if there's content (success or error)
+                self.memory.log_interaction(
+                    provider=provider_name,
+                    model=model_name,
+                    messages=messages,
+                    response=MockResponse(full_content, model_name),
+                    session_id=session_id,
+                    persona=persona_name,
+                    cost=0.0,
+                )
