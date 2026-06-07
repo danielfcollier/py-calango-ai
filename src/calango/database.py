@@ -12,10 +12,16 @@ from tinydb import Query, TinyDB
 
 APP_NAME = ".calango"
 
-BASE_DIR = Path(os.getenv("CALANGO_HOME", Path.home()))
-APP_DIR = BASE_DIR / APP_NAME
-APP_DIR.mkdir(parents=True, exist_ok=True)
-DB_PATH = Path(APP_DIR, "calango.json")
+
+def get_app_dir() -> Path:
+    base_dir = Path(os.getenv("CALANGO_HOME", Path.home()))
+    app_dir = base_dir / APP_NAME
+    app_dir.mkdir(parents=True, exist_ok=True)
+    return app_dir
+
+
+def _get_db_path() -> Path:
+    return get_app_dir() / "calango.json"
 
 # Project root directory (where sample_config.yaml is located)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -51,7 +57,7 @@ def _safe_tinydb_init(db_path):
 
 class ConfigManager:
     def __init__(self):
-        self.db = _safe_tinydb_init(DB_PATH)
+        self.db = _safe_tinydb_init(_get_db_path())
         self.config_table = self.db.table("config")
         self.settings_table = self.db.table("settings")
 
@@ -133,7 +139,7 @@ class ConfigManager:
 
 class PersonaManager:
     def __init__(self):
-        self.db = _safe_tinydb_init(DB_PATH)
+        self.db = _safe_tinydb_init(_get_db_path())
         self.personas_table = self.db.table("personas")
         if not self.personas_table.all():
             self._seed_defaults()
@@ -165,7 +171,7 @@ class PersonaManager:
 
 class SessionManager:
     def __init__(self):
-        self.db = _safe_tinydb_init(DB_PATH)
+        self.db = _safe_tinydb_init(_get_db_path())
         self.sessions_table = self.db.table("sessions")
         self.history_table = self.db.table("history")
 
@@ -228,7 +234,7 @@ class SessionManager:
 
 class InteractionManager:
     def __init__(self):
-        self.db = _safe_tinydb_init(DB_PATH)
+        self.db = _safe_tinydb_init(_get_db_path())
         self.history_table = self.db.table("history")
 
     def log_interaction(self, provider, model, messages, response, session_id, persona, cost=0.0):

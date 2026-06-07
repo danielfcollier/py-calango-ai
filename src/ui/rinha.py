@@ -2,7 +2,7 @@ from tinydb import TinyDB
 
 import streamlit as st
 from calango.core import CalangoEngine
-from calango.database import APP_DIR, ConfigManager, InteractionManager, PersonaManager
+from calango.database import get_app_dir, ConfigManager, InteractionManager, PersonaManager
 from calango.services.arena_service import ArenaService
 from calango.themes import render_copy_button
 
@@ -13,7 +13,7 @@ persona_mgr = PersonaManager()
 config_db = ConfigManager()
 
 # Initialize Persistence (Rinha Store)
-rinha_db_path = APP_DIR / "rinha_store.json"
+rinha_db_path = get_app_dir() / "rinha_store.json"
 rinha_db = TinyDB(rinha_db_path)
 config_table = rinha_db.table("config")
 
