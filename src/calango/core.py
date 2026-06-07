@@ -102,12 +102,15 @@ class CalangoEngine:
                     self.model = model
 
             if full_content:  # Only log if there's content (success or error)
-                self.memory.log_interaction(
-                    provider=provider_name,
-                    model=model_name,
-                    messages=messages,
-                    response=MockResponse(full_content, model_name),
-                    session_id=session_id,
-                    persona=persona_name,
-                    cost=0.0,
-                )
+                try:
+                    self.memory.log_interaction(
+                        provider=provider_name,
+                        model=model_name,
+                        messages=messages,
+                        response=MockResponse(full_content, model_name),
+                        session_id=session_id,
+                        persona=persona_name,
+                        cost=0.0,
+                    )
+                except Exception:
+                    pass

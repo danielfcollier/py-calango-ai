@@ -56,6 +56,7 @@ class ArenaService:
             full_response = ""
             stats_text = "⚠️ Indisponível"
             error_occurred = False
+            streaming_error = False  # True when the exception originates inside the stream loop
 
             try:
                 gen = self.engine.run_chat(
@@ -73,6 +74,7 @@ class ArenaService:
                     # Detect error messages early (before adding to response)
                     # All errors from core.py start with "Error:"
                     if chunk_str.startswith("Error:"):
+                        streaming_error = True
                         raise Exception(chunk_str.replace("Error: ", ""))
 
                     full_response += chunk_str
@@ -86,6 +88,7 @@ class ArenaService:
                     )
 
                     if is_quota_error:
+                        streaming_error = True
                         raise Exception("Quota Exceeded (Detected in Stream)")
 
                 # Finalize stats for this fighter
@@ -119,25 +122,28 @@ class ArenaService:
                 error_occurred = True
                 err_str = str(e).lower()
 
-                # Check for specific error types
-                if any(k in err_str for k in ["quota", "429", "rate limit", "resource_exhausted"]):
-                    full_response = f"**Cota Excedida** ({contender['model']})\n\nO limite gratuito foi atingido."
-                elif "model" in err_str and "not found" in err_str and contender["provider"].lower() == "ollama":
-                    # Ollama model not found - provide helpful instructions
-                    full_response = (
-                        f"**Modelo Local Não Encontrado** ({contender['model']})\n\n"
-                        f"O modelo `{contender['model']}` não está instalado no Ollama.\n"
-                        f"```"
-                    )
-                elif "no api key found" in err_str:
-                    provider_upper = contender["provider"].upper()
-                    full_response = (
-                        f"**API Key Não Configurada** ({contender['model']})\n\n"
-                        f"Configure a variável de ambiente `{provider_upper}_API_KEY` ou "
-                        f"adicione a chave na página de Configurações."
-                    )
-                else:
-                    full_response = f"**Erro**\n\n{str(e)}"
+                # Only overwrite the response if no content was received yet, or if
+                # the exception came from within the stream loop itself (streaming_error).
+                # This prevents post-content exceptions (e.g. from logging in the
+                # generator's finally block) from replacing a valid model response.
+                if not full_response or streaming_error:
+                    if any(k in err_str for k in ["quota", "429", "rate limit", "resource_exhausted"]):
+                        full_response = f"**Cota Excedida** ({contender['model']})\n\nO limite gratuito foi atingido."
+                    elif "model" in err_str and "not found" in err_str and contender["provider"].lower() == "ollama":
+                        full_response = (
+                            f"**Modelo Local Não Encontrado** ({contender['model']})\n\n"
+                            f"O modelo `{contender['model']}` não está instalado no Ollama.\n"
+                            f"```"
+                        )
+                    elif "no api key found" in err_str:
+                        provider_upper = contender["provider"].upper()
+                        full_response = (
+                            f"**API Key Não Configurada** ({contender['model']})\n\n"
+                            f"Configure a variável de ambiente `{provider_upper}_API_KEY` ou "
+                            f"adicione a chave na página de Configurações."
+                        )
+                    else:
+                        full_response = f"**Erro**\n\n{str(e)}"
 
             results.append(
                 {

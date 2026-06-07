@@ -70,8 +70,8 @@ jobs:
         run: |
           mkdir -p $CALANGO_HOME
           
-          # 1. Seed the database using uv run to ensure path/module context
-          uv run python -c "from calango.database import ConfigManager, PersonaManager; cm = ConfigManager(); cm.upsert_provider('openai', 'sk-mock', ['gpt-4o-mini']); PersonaManager()"
+          # Seed DB: truncate so only OpenAI is present (both rinha fighters hit the mock server)
+          uv run python -c "from calango.database import ConfigManager, PersonaManager; cm = ConfigManager(); cm.config_table.truncate(); cm.upsert_provider('openai', 'sk-mock', ['gpt-4o-mini']); PersonaManager()"
           
           # 2. Start Mock SSE Server using 'uv run' to access the installed Flask
           uv run python -c "from flask import Flask, Response; import time; app=Flask(__name__); app.add_url_rule('/chat/completions', 'mock', lambda: (time.sleep(0.5), Response('data: {\"choices\": [{\"delta\": {\"content\": \"Mock response\"}}], \"usage\": {\"prompt_tokens\": 5, \"completion_tokens\": 5}}\n\ndata: [DONE]\n\n', mimetype='text/event-stream'))[1], methods=['POST']); app.run(port=8080)" &          
